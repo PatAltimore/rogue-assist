@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en" data-theme="modern">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Rogue - Assist Mode</title>
+<link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+
+<header class="topbar">
+  <h1>Rogue <span>Assist Mode</span></h1>
+  <div class="topbar-actions" id="topActions">
+    <button id="btnSave" title="Save the game and leave (S)">Save</button>
+    <button id="btnNew" title="Discard any save and start over">New Game</button>
+    <button id="btnSmaller" title="Smaller text">A&minus;</button>
+    <button id="btnBigger" title="Larger text">A+</button>
+    <button id="btnTheme" title="Switch look">Retro</button>
+  </div>
+  <button id="btnMenu" class="menu-btn" aria-label="Menu" aria-expanded="false">&#9776;</button>
+</header>
+
+<main class="layout">
+  <section class="game" id="gamePane">
+    <div class="screen-wrap" id="screenWrap">
+      <div id="screen" class="screen" tabindex="0" role="application" aria-label="Rogue game screen"></div>
+      <div id="overlay" class="overlay" hidden>
+        <div>
+          <p id="overlayText">Loading the dungeon&hellip;</p>
+          <button id="btnOverlayNew" hidden>Start a new game</button>
+        </div>
+      </div>
+    </div>
+    <div class="status-note" id="statusNote">Click the game and type to play. Arrow keys move; hold Shift to run.</div>
+    <div class="touch" id="touch" aria-label="On-screen controls">
+      <div class="dpad">
+        <button data-key="y">&#8598;</button><button data-key="k">&#8593;</button><button data-key="u">&#8599;</button>
+        <button data-key="h">&#8592;</button><button data-key="." class="rest">rest</button><button data-key="l">&#8594;</button>
+        <button data-key="b">&#8601;</button><button data-key="j">&#8595;</button><button data-key="n">&#8600;</button>
+      </div>
+      <div class="keys">
+        <button id="btnRun" class="toggle">Run</button>
+        <button data-key="s">search</button>
+        <button data-key=">">&gt; down</button>
+        <button data-key="<">&lt; up</button>
+        <button data-key="i">pack</button>
+        <button data-key="e">eat</button>
+        <button data-key="q">quaff</button>
+        <button data-key="r">read</button>
+        <button data-key="w">wield</button>
+        <button data-key="W">wear</button>
+        <button data-key="t">throw</button>
+        <button data-key="z">zap</button>
+        <button data-key=",">pick up</button>
+        <button data-key=" ">space</button>
+        <button data-key="Escape">esc</button>
+        <button data-key="Enter">enter</button>
+        <button data-key="y_" id="btnYes">y</button>
+      </div>
+    </div>
+  </section>
+
+  <aside class="assist" id="assist">
+    <nav class="tabs" id="tabs" role="tablist">
+      <button role="tab" data-tab="status" class="active">Status</button>
+      <button role="tab" data-tab="hints">Hints</button>
+      <button role="tab" data-tab="map">Map</button>
+      <button role="tab" data-tab="ref">Reference</button>
+      <button role="tab" data-tab="cheats">Cheats</button>
+      <button role="tab" data-tab="code">Code</button>
+    </nav>
+
+    <div class="panel active" id="panel-status">
+      <div class="card" id="vitals"></div>
+      <h2>Advice right now</h2>
+      <div id="advice" class="advice"></div>
+      <h2>In sight</h2>
+      <div id="nearby" class="nearby"></div>
+      <h2>Pack</h2>
+      <ul id="pack" class="pack"></ul>
+    </div>
+
+    <div class="panel" id="panel-hints">
+      <label class="field">Topic
+        <select id="hintTopic"></select>
+      </label>
+      <div id="hintBody" class="hint-body"></div>
+      <h2>Keys</h2>
+      <dl id="commandList" class="commands"></dl>
+    </div>
+
+    <div class="panel" id="panel-map">
+      <canvas id="mapCanvas" aria-label="Level overview"></canvas>
+      <p class="map-note" id="mapNote"></p>
+      <div class="legend">
+        <span><i class="k-hero"></i>You</span>
+        <span><i class="k-door"></i>Door</span>
+        <span><i class="k-stairs"></i>Stairs</span>
+        <span><i class="k-trap"></i>Trap</span>
+        <span><i class="k-gold"></i>Gold</span>
+        <span><i class="k-unexplored"></i>Unexplored exit</span>
+      </div>
+      <p class="muted">Shows what your character remembers of this level. Yellow outlines mark doors with unexplored space beyond them.</p>
+    </div>
+
+    <div class="panel" id="panel-ref">
+      <label class="field">Look up
+        <input id="refSearch" type="search" placeholder="monster letter or name, or an item" autocomplete="off">
+      </label>
+      <div id="refBody"></div>
+    </div>
+
+    <div class="panel" id="panel-cheats">
+      <p class="warn">Using any cheat turns the game into a practice run. Your score will not be added to the high-score list.</p>
+      <div class="cheat-grid" id="cheatGrid"></div>
+      <h2>Display helpers</h2>
+      <label class="check"><input type="checkbox" id="chkRadar"> Monster radar on the map tab</label>
+      <label class="check"><input type="checkbox" id="chkStairs"> Mark the stairs on the map tab</label>
+    </div>
+
+    <div class="panel" id="panel-code">
+      <p>This site runs the real Rogue 5.4.4 C source, built to WebAssembly with Emscripten. A small curses replacement (<code>engine/shim</code>) draws to an 80&times;24 grid that this page renders.</p>
+      <p>Where to look in the original source (<a href="https://github.com/Davidslv/rogue" target="_blank" rel="noopener">Davidslv/rogue</a>):</p>
+      <ul id="codeList" class="code-list"></ul>
+    </div>
+  </aside>
+</main>
+
+<script src="js/data.js"></script>
+<script src="js/app.js"></script>
+{{{ SCRIPT }}}
+</body>
+</html>
