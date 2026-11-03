@@ -181,7 +181,7 @@
     // On a phone the whole 80 columns are too small to read, so keep a minimum
     // size and let the view scroll sideways to follow the cursor.
     var floor = window.innerWidth < 860 ? 10 : 6;
-    var fs = Math.max(floor, Math.min(40, Math.round(fit * zoom)));
+    var fs = Math.max(6, Math.min(48, Math.round(Math.max(floor, fit) * zoom)));
     colWidth = perCol * fs;
     screenEl.style.setProperty('--fs', fs + 'px');
     followCursor();
@@ -627,8 +627,8 @@
     refreshSidebar();
   }
 
-  function zoom(delta) {
-    var z = Math.max(0.6, Math.min(2, (parseFloat(store.get('rogue-zoom', '1')) || 1) + delta));
+  function zoom(factor) {
+    var z = Math.max(0.6, Math.min(2.5, (parseFloat(store.get("rogue-zoom", "1")) || 1) * factor));
     store.set('rogue-zoom', String(z));
     fitScreen();
   }
@@ -644,8 +644,8 @@
   $('btnTheme').addEventListener('click', function () {
     setTheme(document.documentElement.dataset.theme === 'retro' ? 'modern' : 'retro');
   });
-  $('btnSmaller').addEventListener('click', function () { zoom(-0.1); });
-  $('btnBigger').addEventListener('click', function () { zoom(0.1); });
+  $('btnSmaller').addEventListener('click', function () { zoom(1 / 1.15); });
+  $('btnBigger').addEventListener('click', function () { zoom(1.15); });
   $('btnNew').addEventListener('click', newGame);
   $('btnOverlayNew').addEventListener('click', function () {
     try { if (Module.FS.analyzePath('/data/rogue.save').exists) Module.FS.unlink('/data/rogue.save'); } catch (e) { /* none */ }
