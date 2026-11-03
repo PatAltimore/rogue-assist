@@ -528,7 +528,8 @@
     [6, 'Ascend', 'Go up a level'],
     [7, 'Reveal map', 'Map the whole level'],
     [8, 'Identify all', 'Every potion, scroll, ring, wand'],
-    [9, 'Add 500 gold', 'Straight to your purse']
+    [9, 'Add 500 gold', 'Straight to your purse'],
+    [10, 'Regenerate level', 'New layout, same depth']
   ];
 
   function setupCheats() {

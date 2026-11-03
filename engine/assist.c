@@ -19,6 +19,7 @@
 #define CH_MAP       7
 #define CH_IDENTIFY  8
 #define CH_GOLD      9
+#define CH_REGEN     10
 
 static int cheated;
 
@@ -340,6 +341,10 @@ void assist_cheat(int code)
     case CH_GOLD:
         purse += 500;
         msg("Cheat: 500 gold appears in your purse");
+        break;
+    case CH_REGEN:
+        new_level();
+        msg("Cheat: a new layout for this level");
         break;
     default:
         return;
