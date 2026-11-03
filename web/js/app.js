@@ -565,9 +565,12 @@
     ['rip.c', 'The tombstone and the score list']
   ];
 
+  var CODE_MUSEUM = 'https://pataltimore.github.io/code-museum/#/rogue';
+
   function setupCode() {
     $('codeList').innerHTML = SOURCE.map(function (s) {
-      return '<li><a href="https://github.com/Davidslv/rogue/blob/main/' + s[0] + '" target="_blank" rel="noopener">' + s[0] + '</a> ' + escapeHtml(s[1]) + '</li>';
+      var slug = s[0].replace(/\./g, '-');
+      return '<li><a href="' + CODE_MUSEUM + '/' + slug + '" target="_blank" rel="noopener">' + s[0] + '</a> ' + escapeHtml(s[1]) + '</li>';
     }).join('') +
       '<li><a href="https://github.com/PatAltimore/rogue-assist" target="_blank" rel="noopener">engine/shim</a> The curses replacement and the browser hooks (assist.c) used by this page</li>';
   }
