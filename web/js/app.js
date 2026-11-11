@@ -221,7 +221,13 @@
 
   document.addEventListener('keydown', function (e) {
     if (isTyping(e) || e.ctrlKey || e.metaKey || e.altKey) return;
-    if (document.activeElement && document.activeElement.tagName === 'BUTTON' && (e.key === ' ' || e.key === 'Enter')) return;
+    var ae = document.activeElement;
+    if (ae && ae.tagName === 'BUTTON' && (e.key === ' ' || e.key === 'Enter')) {
+      // Buttons elsewhere keep their keyboard activation; in the game pane Space
+      // goes to the game (it answers --More--), so drop the focus first.
+      if (e.key === 'Enter' || !ae.closest('#gamePane')) return;
+      ae.blur();
+    }
     if (e.key === 'Escape' && typeof peek !== 'undefined' && peek && mode === '3d') { peek = false; syncTextOverlay(true); e.preventDefault(); return; }
     var arrow = { ArrowLeft: 'h', ArrowDown: 'j', ArrowUp: 'k', ArrowRight: 'l', Home: 'y', PageUp: 'u', End: 'b', PageDown: 'n' }[e.key];
     var handled = true;
@@ -811,6 +817,11 @@
   $('btnMenu').addEventListener('click', function () {
     var open = $('topActions').classList.toggle('open');
     this.setAttribute('aria-expanded', open);
+  });
+  // Controls in the game pane should not hold on to the keyboard after a click.
+  $('gamePane').addEventListener('click', function (e) {
+    var b = e.target.closest('button');
+    if (b) setTimeout(function () { b.blur(); }, 0);
   });
   $('refSearch').addEventListener('input', renderRef);
   $('screenWrap').addEventListener('click', function () { $('screen').focus(); });
