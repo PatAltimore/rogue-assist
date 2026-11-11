@@ -222,6 +222,7 @@
   document.addEventListener('keydown', function (e) {
     if (isTyping(e) || e.ctrlKey || e.metaKey || e.altKey) return;
     if (document.activeElement && document.activeElement.tagName === 'BUTTON' && (e.key === ' ' || e.key === 'Enter')) return;
+    if (e.key === 'Escape' && typeof peek !== 'undefined' && peek && mode === '3d') { peek = false; syncTextOverlay(true); e.preventDefault(); return; }
     var arrow = { ArrowLeft: 'h', ArrowDown: 'j', ArrowUp: 'k', ArrowRight: 'l', Home: 'y', PageUp: 'u', End: 'b', PageDown: 'n' }[e.key];
     var handled = true;
     if (arrow) sendKey((e.shiftKey ? arrow.toUpperCase() : arrow).charCodeAt(0));
@@ -653,7 +654,7 @@
     $('gamePane').classList.toggle('mode-3d', m === '3d');
     $('modeText').setAttribute('aria-pressed', m === '2d');
     $('mode3d').setAttribute('aria-pressed', m === '3d');
-    $('btnPeek').hidden = m !== '3d';
+    $('btnPeek').hidden = $('ovLabel').hidden = m !== '3d';
     $('hudMsg').hidden = $('hudStatus').hidden = m !== '3d';
     if (window.View3D) View3D.setVisible(view3dActive());
     syncTextOverlay(true);
@@ -676,6 +677,7 @@
     if (show === textShown && !force) return;
     textShown = show;
     $('gamePane').classList.toggle('needs-text', show);
+    $('gamePane').classList.toggle('peek', peek);
     $('btnPeek').setAttribute('aria-pressed', peek);
     $('btnPeek').textContent = peek ? 'Back to 3D' : 'Text';
     if (show) { fitScreen(); renderScreen(); }
@@ -738,6 +740,13 @@
     $('modeText').addEventListener('click', function () { setMode('2d'); });
     $('mode3d').addEventListener('click', function () { setMode('3d'); });
     $('btnPeek').addEventListener('click', function () { peek = !peek; syncTextOverlay(true); updateHud(lastState); });
+    // A peek closes with a click on the text, or with Escape (handled with the keyboard).
+    $('screenWrap').addEventListener('click', function () { if (mode === '3d' && peek) { peek = false; syncTextOverlay(true); } });
+    var ov = $('ovOpacity');
+    ov.value = store.get('rogue-overlay', '50');
+    function applyOv() { $('gamePane').style.setProperty('--ov', String(ov.value / 100)); store.set('rogue-overlay', ov.value); }
+    ov.addEventListener('input', applyOv);
+    applyOv();
     setMode(mode);
   }
   function refreshSidebar() {
