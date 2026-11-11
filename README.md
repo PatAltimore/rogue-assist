@@ -3,6 +3,7 @@
 The original 1980s dungeon crawler **Rogue 5.4.4**, running in your browser, with an **Assist Mode** sidebar for when you get stuck. Rogue is randomly generated, so there is no fixed walkthrough; the assist tools react to your game instead.
 
 - **The real game.** The C source from [Davidslv/rogue](https://github.com/Davidslv/rogue) is compiled to WebAssembly with Emscripten. A small curses replacement (`engine/shim`) draws to an 80x24 grid that the page renders, so there is no terminal emulator.
+- **3D view.** A panel under the text screen shows the level you have explored in 3D (three.js): walls, rooms, corridors, doors, stairs, traps, items, monsters and your character, with pulsing rings on doors that lead somewhere unexplored. It follows you, and you can drag to turn the camera, scroll or pinch to zoom, or use the buttons. It is view-only and can be hidden. It uses the Monster radar and stairs options from the Cheats tab.
 - **Status tab.** Live HP, hunger and stats, advice based on what is happening ("Weak from hunger", "an aquator is near: take your armor off"), the monsters in view, and your pack. Unidentified potions, scrolls, rings and wands show the odds of each kind they could be.
 - **Hints tab.** Topic hints that open one tier at a time (nudge, stronger hint, answer), plus a key reference.
 - **Map tab.** An overview of the level you have explored, with yellow outlines on doors that lead somewhere you have not been.
@@ -37,7 +38,7 @@ cd dist && python -m http.server 8091   # then open http://localhost:8091/
 - `engine/` Rogue 5.4.4 C source, with a few small patches (marked `__EMSCRIPTEN__` or commented): saves and score file under `/data`, the daemon callbacks called with the exact signature WebAssembly needs, no setuid dropping.
 - `engine/shim/` the curses replacement and the keyboard bridge (`getch` suspends via Emscripten ASYNCIFY until the page supplies a key).
 - `engine/assist.c` read-only views of the live game (stats, pack, map, monsters) and the cheats.
-- `web/` the page: `shell.html`, `css/app.css`, `js/app.js`, `js/data.js` (monster, item and hint data).
+- `web/` the page: `shell.html`, `css/app.css`, `js/app.js`, `js/view3d.js` (the 3D panel, loads three.js from cdnjs), `js/data.js` (monster, item and hint data).
 - `.github/workflows/pages.yml` builds and deploys to GitHub Pages (Settings, Pages, Source must be "GitHub Actions").
 
 ## Credits and license

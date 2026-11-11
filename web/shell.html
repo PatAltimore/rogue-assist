@@ -32,6 +32,25 @@
       </div>
     </div>
     <div class="status-note" id="statusNote">Click the game and type to play. Arrow keys move; hold Shift to run.</div>
+    <section class="view3d" id="view3d" aria-label="3D view of the level">
+      <div class="view3d-head">
+        <h2>3D view</h2>
+        <div class="view3d-tools">
+          <button data-v3="rotl" aria-label="Rotate left" title="Rotate left">&#10226;</button>
+          <button data-v3="rotr" aria-label="Rotate right" title="Rotate right">&#10227;</button>
+          <button data-v3="tiltup" aria-label="Tilt up" title="Look lower">&#9650;</button>
+          <button data-v3="tiltdown" aria-label="Tilt down" title="Look higher">&#9660;</button>
+          <button data-v3="zoomin" aria-label="Zoom in" title="Zoom in">+</button>
+          <button data-v3="zoomout" aria-label="Zoom out" title="Zoom out">&minus;</button>
+          <button data-v3="reset" title="Reset the camera">Reset</button>
+          <button id="btnView3d" aria-expanded="true" title="Show or hide the 3D view">Hide</button>
+        </div>
+      </div>
+      <div class="view3d-stage" id="view3dStage">
+        <p class="view3d-msg" id="view3dMsg" hidden></p>
+      </div>
+      <p class="muted view3d-help" id="view3dHelp">Drag to turn the camera, scroll or pinch to zoom. It shows what your character has explored; play with the keys or the buttons as usual.</p>
+    </section>
     <div class="touch" id="touch" aria-label="On-screen controls">
       <div class="dpad">
         <button data-key="y">&#8598;</button><button data-key="k">&#8593;</button><button data-key="u">&#8599;</button>
@@ -126,7 +145,9 @@
   </aside>
 </main>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="js/data.js"></script>
+<script src="js/view3d.js"></script>
 <script src="js/app.js"></script>
 {{{ SCRIPT }}}
 </body>

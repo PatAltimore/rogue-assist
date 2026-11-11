@@ -597,9 +597,61 @@
   });
 
   var lastState = null;
+
+  // The 3D panel under the text screen. It only does work while it is open.
+  var view3dOpen = store.get('rogue-3d', '1') === '1';
+
+  function update3d(s) {
+    if (!view3dOpen || !window.View3D || !View3D.isOk()) return;
+    var grid = [];
+    for (var y = 0; y < ROWS; y++) {
+      var row = new Array(COLS);
+      for (var x = 0; x < COLS; x++) row[x] = (y > 0 && y < ROWS - 1) ? call('cell', y, x) : 0;
+      grid.push(row);
+    }
+    var monsters = s.seen.map(function (m) { return { ch: m.letter, x: m.x, y: m.y }; });
+    if (mapOpts.radar) {
+      monsters = [];
+      var n = call('monster_count', 0);
+      for (var i = 0; i < n; i++) {
+        monsters.push({ ch: String.fromCharCode(call('monster_type', i, 0)), x: call('monster_x', i, 0), y: call('monster_y', i, 0), radar: true });
+      }
+    }
+    View3D.update({
+      grid: grid, hero: { x: s.heroX, y: s.heroY }, level: s.level, monsters: monsters,
+      stairs: mapOpts.stairs && call('stairs_y') ? { x: call('stairs_x'), y: call('stairs_y') } : null
+    });
+  }
+
+  function setView3dOpen(open) {
+    view3dOpen = open;
+    store.set('rogue-3d', open ? '1' : '0');
+    $('view3d').classList.toggle('collapsed', !open);
+    $('btnView3d').textContent = open ? 'Hide' : 'Show 3D';
+    $('btnView3d').setAttribute('aria-expanded', open);
+    if (window.View3D) View3D.setVisible(open);
+    if (open && lastState) update3d(lastState);
+  }
+
+  function setupView3d() {
+    var ok = window.View3D && View3D.init($('view3dStage'));
+    if (!ok) {
+      Array.prototype.forEach.call(document.querySelectorAll('[data-v3]'), function (b) { b.hidden = true; });
+      $('view3dHelp').hidden = true;
+      $('btnView3d').hidden = true;
+      return;
+    }
+    document.querySelector('.view3d-tools').addEventListener('click', function (e) {
+      var b = e.target.closest('button[data-v3]');
+      if (b) View3D.command(b.dataset.v3);
+    });
+    $('btnView3d').addEventListener('click', function () { setView3dOpen(!view3dOpen); });
+    setView3dOpen(view3dOpen);
+  }
   function refreshSidebar() {
     if (!gameRunning) return;
     lastState = readState();
+    update3d(lastState);
     if (activeTab === 'status') renderStatus(lastState);
     if (activeTab === 'map') renderMap(lastState);
     if (activeTab === 'ref') renderRef();
@@ -620,6 +672,7 @@
 
   function setTheme(t) {
     document.documentElement.dataset.theme = t;
+    if (window.View3D) View3D.setTheme(t);
     $('btnTheme').textContent = t === 'retro' ? 'Modern' : 'Retro';
     store.set('rogue-theme', t);
     rowCache.fill(null);
@@ -661,6 +714,7 @@
   window.addEventListener('resize', function () { fitScreen(); refreshSidebar(); });
   window.addEventListener('beforeunload', syncSaves);
 
+  setupView3d();
   setupHints();
   setupCheats();
   setupCode();

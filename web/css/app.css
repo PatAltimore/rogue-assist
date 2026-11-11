@@ -237,7 +237,23 @@ table.ref td.l { font-family: var(--font-mono); color: var(--c-mon); font-weight
 a { color: var(--accent); }
 code { font-family: var(--font-mono); background: var(--panel-2); padding: 0 4px; border-radius: 3px; }
 
+.view3d { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px 10px; }
+.view3d-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.view3d-head h2 { margin: 0; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); }
+.view3d-tools { display: flex; gap: 4px; flex-wrap: wrap; }
+.view3d-tools button { padding: 4px 9px; min-width: 32px; touch-action: manipulation; }
+.view3d-stage { position: relative; margin-top: 8px; height: clamp(240px, 36vh, 420px); border: 1px solid var(--border); border-radius: 6px; overflow: hidden; background: var(--screen-bg); }
+.view3d-stage canvas { display: block; width: 100%; height: 100%; touch-action: pan-y; cursor: grab; }
+.view3d-stage canvas:active { cursor: grabbing; }
+.view3d-msg { position: absolute; inset: 0; display: grid; place-items: center; margin: 0; padding: 16px; text-align: center; color: var(--muted); }
+.view3d-help { margin: 6px 0 0; font-size: 0.8rem; }
+.view3d.collapsed .view3d-stage, .view3d.collapsed .view3d-help, .view3d.collapsed [data-v3] { display: none; }
+
 @media (max-width: 860px) {
+  .view3d-stage { height: 240px; }
+  .view3d-help { display: none; }
+  .touch { order: 1; }
+  .view3d { order: 2; }
   .layout { grid-template-columns: minmax(0, 1fr); padding: 8px 16px 16px; }
   .assist { max-height: none; }
   .menu-btn { display: inline-block; }
