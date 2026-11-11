@@ -69,10 +69,13 @@ button {
   cursor: pointer;
 }
 button:hover { border-color: var(--accent); }
-button:focus-visible, select:focus-visible, input:focus-visible, .screen:focus-visible {
+button:focus-visible, select:focus-visible, input:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 1px;
 }
+
+/* The game board takes keys from anywhere on the page, so it needs no focus ring. */
+.screen:focus { outline: none; }
 
 .topbar {
   display: flex;
