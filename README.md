@@ -38,7 +38,7 @@ cd dist && python -m http.server 8091   # then open http://localhost:8091/
 - `engine/` Rogue 5.4.4 C source, with a few small patches (marked `__EMSCRIPTEN__` or commented): saves and score file under `/data`, the daemon callbacks called with the exact signature WebAssembly needs, no setuid dropping.
 - `engine/shim/` the curses replacement and the keyboard bridge (`getch` suspends via Emscripten ASYNCIFY until the page supplies a key).
 - `engine/assist.c` read-only views (plus the flags that tell the page when the game is at its command prompt) of the live game (stats, pack, map, monsters) and the cheats.
-- `web/` the page: `shell.html`, `css/app.css`, `js/app.js`, `js/view3d.js` (the 3D panel, loads three.js from cdnjs), `js/data.js` (monster, item and hint data).
+- `web/` the page: `shell.html`, `css/app.css`, `js/app.js`, `js/view3d.js` (the 3D panel, loads three.js from cdnjs), `js/models3d.js` (low-poly models for the hero, all 26 monsters and the items, built from three.js shapes), `js/data.js` (monster, item and hint data).
 - `.github/workflows/pages.yml` builds and deploys to GitHub Pages (Settings, Pages, Source must be "GitHub Actions").
 
 ## Credits and license

@@ -58,6 +58,7 @@ window.View3D = (function () {
     heroLight = new T.PointLight(0xffd9a0, 1.1, 14, 1.6);
     scene.add(ambient, sun, heroLight);
 
+    Models3D.init(T);
     buildShared();
     applyTheme();
     bindControls();
@@ -88,21 +89,20 @@ window.View3D = (function () {
     [walls, floors, passes].forEach(function (m) {
       m.instanceMatrix.setUsage(T.DynamicDrawUsage);
       m.frustumCulled = false;
+      // Create the colour buffer now: three.js compiles the shader on the first
+      // render and would ignore a buffer added later.
+      m.setColorAt(0, new T.Color(0xffffff));
       scene.add(m);
     });
     dynamic = new T.Group();
     scene.add(dynamic);
 
     hero = new T.Group();
-    var body = new T.Mesh(new T.CylinderGeometry(0.28, 0.34, 0.75, 14), new T.MeshLambertMaterial({ color: 0xffffff }));
-    body.position.y = 0.4;
-    var head = new T.Mesh(new T.SphereGeometry(0.24, 14, 12), new T.MeshLambertMaterial({ color: 0xffe3b5 }));
-    head.position.y = 0.97;
     var ring = new T.Mesh(new T.RingGeometry(0.42, 0.55, 28), new T.MeshBasicMaterial({ color: 0xffffff, side: T.DoubleSide, transparent: true, opacity: 0.7 }));
     ring.rotation.x = -Math.PI / 2;
     ring.position.y = 0.03;
-    hero.add(body, head, ring);
-    hero.userData = { body: body, ring: ring };
+    hero.add(ring);
+    hero.userData = { ring: ring, model: null };
     scene.add(hero);
   }
 
@@ -113,7 +113,10 @@ window.View3D = (function () {
     var p = pal();
     scene.background = new T.Color(p.bg);
     scene.fog = new T.Fog(p.bg, 16, 46);
-    hero.userData.body.material.color.set(p.hero);
+    Models3D.setTheme(state.theme);
+    if (hero.userData.model) hero.remove(hero.userData.model);
+    hero.userData.model = Models3D.hero();
+    hero.add(hero.userData.model);
     hero.userData.ring.material.color.set(p.frontier);
     state.dirty = true;
   }
@@ -173,23 +176,6 @@ window.View3D = (function () {
     return m;
   }
 
-  function itemMesh(ch, p) {
-    var m;
-    switch (ch) {
-      case '*': m = mesh(new T.CylinderGeometry(0.24, 0.24, 0.07, 14), p.gold, { emissive: shade(p.gold, 0.35) }); m.rotation.x = 0.5; break;
-      case '!': m = mesh(new T.SphereGeometry(0.22, 12, 10), p.potion, { emissive: shade(p.potion, 0.3) }); break;
-      case '?': m = mesh(new T.BoxGeometry(0.5, 0.06, 0.36), p.scroll); break;
-      case ':': m = mesh(new T.SphereGeometry(0.26, 12, 10), p.food); m.scale.y = 0.6; break;
-      case ')': m = mesh(new T.BoxGeometry(0.1, 0.1, 0.6), p.weapon); m.rotation.y = 0.6; break;
-      case ']': m = mesh(new T.BoxGeometry(0.42, 0.3, 0.3), p.armor); break;
-      case '=': m = mesh(new T.TorusGeometry(0.17, 0.05, 8, 18), p.magic, { emissive: shade(p.magic, 0.4) }); m.rotation.x = Math.PI / 2; break;
-      case '/': m = mesh(new T.CylinderGeometry(0.04, 0.04, 0.7, 8), p.magic, { emissive: shade(p.magic, 0.3) }); m.rotation.z = 1.0; break;
-      case ',': m = mesh(new T.OctahedronGeometry(0.3), p.magic, { emissive: shade(p.magic, 0.7) }); break;
-      default: return null;
-    }
-    return m;
-  }
-
   function addAt(obj, x, y, z, bob) {
     obj.position.set(x, y, z);
     dynamic.add(obj);
@@ -197,19 +183,19 @@ window.View3D = (function () {
     return obj;
   }
 
-  function addMonster(letter, x, y, p, dim) {
-    var g = new T.Group();
-    var body = mesh(new T.ConeGeometry(0.34, 0.9, 12), p.mon, { emissive: shade(p.mon, 0.25) });
-    body.position.y = 0.45;
-    g.add(body);
+  function addMonster(letter, x, y, p, dim, hero) {
+    var g = Models3D.monster(letter);
+    var h = (g.userData && g.userData.h) || 1.2;
     var sprite = new T.Sprite(new T.SpriteMaterial({ map: label(letter, p.mon), transparent: true, depthTest: false, opacity: dim ? 0.8 : 1 }));
-    sprite.scale.set(0.9, 0.9, 1);
-    sprite.position.y = 1.35;
-    sprite.userData.own = false;
+    sprite.scale.set(0.8, 0.8, 1);
+    sprite.position.y = h + 0.2;
     g.add(sprite);
     g.position.set(x, 0, y);
+    // Face the hero.
+    if (hero) g.rotation.y = Math.atan2(hero.x - x, hero.y - y);
     dynamic.add(g);
-    anim.push({ obj: g, base: 0, phase: hash(x, y) * 6.28, wobble: true });
+    var flies = g.userData && g.userData.flies;
+    anim.push({ obj: g, base: 0, phase: hash(x, y) * 6.28, wobble: true, flies: !!flies, wings: [g.getObjectByName('wingL'), g.getObjectByName('wingR')] });
   }
 
   // data: { grid[y][x] -> char code (0 = unexplored), hero:{x,y}, level, monsters:[{ch,x,y}], stairs:{x,y}|null }
@@ -235,8 +221,8 @@ window.View3D = (function () {
         }
         place(floors, nF++, x, -0.05, y, 0.98, 0.1, 0.98, shade(p.floor, v));
         if (ch === '+') {
-          var door = mesh(new T.BoxGeometry(0.86, 0.95, 0.86), p.door, { emissive: shade(p.door, 0.3) });
-          addAt(door, x, 0.475, y, 0);
+          var left = String.fromCharCode(data.grid[y][x - 1] || 0), right = String.fromCharCode(data.grid[y][x + 1] || 0);
+          addAt(Models3D.door(left === '-' || right === '-' || left === '+' || right === '+'), x, 0, y, 0);
           var open = [[0, 1], [0, -1], [1, 0], [-1, 0]].some(function (d) {
             var ny = y + d[0], nx = x + d[1];
             return ny > 0 && ny < ROWS - 1 && nx >= 0 && nx < COLS && !data.grid[ny][nx];
@@ -249,24 +235,23 @@ window.View3D = (function () {
             frontierMeshes.push(mk);
           }
         } else if (ch === '%') {
-          addStairs(x, y, p);
+          addAt(Models3D.stairs(), x, 0, y, 0);
         } else if (ch === '^') {
-          var spike = mesh(new T.ConeGeometry(0.28, 0.5, 6), p.trap, { emissive: shade(p.trap, 0.4) });
-          addAt(spike, x, 0.25, y, 0);
+          addAt(Models3D.trap(), x, 0, y, 0);
         } else {
-          var it = itemMesh(ch, p);
-          if (it) addAt(it, x, 0.38, y, 2);
+          var it = Models3D.item(ch, hash(x + 7, y + 3));
+          if (it) { it.scale.set(1.4, 1.4, 1.4); addAt(it, x, 0.1, y, 2); }
         }
       }
     }
     if (data.stairs && !data.grid[data.stairs.y][data.stairs.x] ) {
-      addStairs(data.stairs.x, data.stairs.y, p);
+      addAt(Models3D.stairs(), data.stairs.x, 0, data.stairs.y, 0);
       var beam = mesh(new T.CylinderGeometry(0.12, 0.12, 6, 8), p.stairs, { emissive: p.stairs });
       beam.material.transparent = true;
       beam.material.opacity = 0.35;
       addAt(beam, data.stairs.x, 3, data.stairs.y, 0);
     }
-    data.monsters.forEach(function (m) { addMonster(m.ch, m.x, m.y, p, m.radar); });
+    data.monsters.forEach(function (m) { addMonster(m.ch, m.x, m.y, p, m.radar, data.hero); });
 
     [[walls, nW], [floors, nF], [passes, nP]].forEach(function (pair) {
       pair[0].count = pair[1];
@@ -280,13 +265,6 @@ window.View3D = (function () {
     }
     state.hero = data.hero;
     state.dirty = true;
-  }
-
-  function addStairs(x, y, p) {
-    for (var i = 0; i < 3; i++) {
-      var step = mesh(new T.BoxGeometry(0.9 - i * 0.22, 0.16, 0.9 - i * 0.22), p.stairs, { emissive: shade(p.stairs, 0.25) });
-      addAt(step, x, 0.08 + i * 0.16, y, 0);
-    }
   }
 
   // ------------------------------------------------------------ camera
@@ -324,7 +302,14 @@ window.View3D = (function () {
     if (!state.reduceMotion) {
       for (var i = 0; i < anim.length; i++) {
         var a = anim[i];
-        if (a.wobble) a.obj.rotation.z = Math.sin(t * 3 + a.phase) * 0.07;
+        if (a.wobble) {
+          a.obj.rotation.z = Math.sin(t * 3 + a.phase) * (a.flies ? 0.03 : 0.07);
+          if (a.flies) a.obj.position.y = Math.sin(t * 2.4 + a.phase) * 0.08;
+          if (a.wings && a.wings[0]) {
+            var flap = Math.sin(t * (a.flies ? 12 : 4) + a.phase) * (a.flies ? 0.7 : 0.25);
+            a.wings[0].rotation.z = -flap; a.wings[1].rotation.z = flap;
+          }
+        }
         else {
           a.obj.position.y = a.base + Math.sin(t * 2 + a.phase) * 0.06;
           if (a.spin) a.obj.rotation.y = t + a.phase;
