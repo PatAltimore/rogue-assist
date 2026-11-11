@@ -743,8 +743,8 @@
     // A peek closes with a click on the text, or with Escape (handled with the keyboard).
     $('screenWrap').addEventListener('click', function () { if (mode === '3d' && peek) { peek = false; syncTextOverlay(true); } });
     var ov = $('ovOpacity');
-    ov.value = store.get('rogue-overlay', '50');
-    function applyOv() { $('gamePane').style.setProperty('--ov', String(ov.value / 100)); store.set('rogue-overlay', ov.value); }
+    ov.value = store.get('rogue-text-opacity', '90');
+    function applyOv() { $('gamePane').style.setProperty('--ov', String(ov.value / 100)); store.set('rogue-text-opacity', ov.value); }
     ov.addEventListener('input', applyOv);
     applyOv();
     setMode(mode);

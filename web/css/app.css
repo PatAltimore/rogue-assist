@@ -253,9 +253,9 @@ code { font-family: var(--font-mono); background: var(--panel-2); padding: 0 4px
 .hud-status span { background: rgba(8, 9, 12, 0.78); border: 1px solid var(--border); border-radius: 6px; padding: 2px 8px; font-size: 0.85rem; }
 .hud-status .low { border-color: var(--danger); color: var(--danger); }
 
-.mode-3d .screen-wrap { position: absolute; inset: 0; z-index: 20; display: none; background: rgba(8, 9, 12, var(--ov, 0.5)); }
+.mode-3d .screen-wrap { position: absolute; inset: 0; z-index: 20; display: none; background: transparent; }
 .mode-3d.needs-text .view3d-head { position: relative; z-index: 30; }
-.mode-3d .screen { text-shadow: 0 0 2px #000, 0 0 5px #000, 0 0 9px #000; }
+.mode-3d .screen { opacity: var(--ov, 0.9); text-shadow: 0 0 2px #000, 0 0 5px #000, 0 0 9px #000; }
 .mode-3d.peek .screen-wrap { cursor: pointer; }
 .ov-label { display: none; align-items: center; gap: 6px; font-size: 0.8rem; color: var(--muted); }
 .ov-label input { width: 80px; accent-color: var(--accent); }
