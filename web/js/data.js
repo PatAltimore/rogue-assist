@@ -68,6 +68,37 @@ var RogueData = (function () {
     ['spear', 12, '2d3 melee, 1d6 thrown']
   ];
 
+  // Everything that can appear on the map: glyph, name, what it means.
+  var SYMBOLS = [
+    ['@', 'You', 'Your character.'],
+    ['A-Z', 'Monster', 'Each letter is a kind of monster. Look it up under Monsters below, or press / in the game and then the letter.'],
+    ['.', 'Floor', 'Open floor of a room.'],
+    ['#', 'Corridor', 'A passage between rooms. Corridors are dark, so you only see the squares next to you.'],
+    ['+', 'Door', 'A doorway in a room wall. It leads to a corridor.'],
+    ['| -', 'Wall', 'The walls of a room.'],
+    ['%', 'Stairs', 'The staircase down. Stand on it and press > to go to the next level. Going up with < only works once you carry the Amulet of Yendor.'],
+    ['^', 'Trap', 'A trap you have found. Press ^ and a direction to see what kind (trapdoor, arrow, sleeping gas, bear trap, teleport, poison dart, rust).'],
+    ['*', 'Gold', 'Gold. Walk over it to pick it up; it counts toward your score.'],
+    ['!', 'Potion', 'A potion. Drink it with q.'],
+    ['?', 'Scroll', 'A scroll. Read it with r.'],
+    [':', 'Food', 'A food ration. Eat it with e.'],
+    [')', 'Weapon', 'A weapon. Wield it with w, throw it with t.'],
+    [']', 'Armor', 'Armor. Wear it with W.'],
+    ['=', 'Ring', 'A ring. Put it on with P.'],
+    ['/', 'Wand or staff', 'A wand or staff. Zap it with z.'],
+    [',', 'Amulet', 'The Amulet of Yendor, found deep in the dungeon.']
+  ];
+
+  // The status line at the bottom of the game screen.
+  var STATUS = [
+    ['Level', 'How deep you are. Deeper is harder.'],
+    ['Gold', 'Gold in your purse. If you die, this is your score.'],
+    ['Hp', 'Hit points now (and your maximum in brackets). At 0 you die.'],
+    ['Str', 'Strength now (and your maximum). Some monsters and potions lower it.'],
+    ['Arm', 'Armor class. Lower is better: 10 is no armor, and good armor gets it to 3 or less.'],
+    ['Exp', 'Your experience level, then your experience points.']
+  ];
+
   // Item kinds the engine can tell us about: kind index -> table
   var KINDS = [
     { id: 0, label: 'Potions',        singular: 'potion', items: POTIONS },
@@ -153,7 +184,8 @@ var RogueData = (function () {
     ['H J K L', 'Run in a direction (Shift + arrow)'],
     ['.', 'Rest one turn'],
     ['s', 'Search for secret doors and traps'],
-    ['>  <', 'Go down or up stairs'],
+    ['>', 'Go down stairs (stand on the % first)'],
+    ['<', 'Go up stairs (only works if you carry the Amulet)'],
     ['i', 'Inventory'],
     ['e', 'Eat'],
     ['q', 'Quaff a potion'],
@@ -193,7 +225,7 @@ var RogueData = (function () {
       tiers: [
         'Where you stand matters as much as how you swing.',
         'Fight in a corridor or doorway so only one monster can reach you at a time. Throw daggers and fire arrows at things that are coming.',
-        'Equip the best armor you have (lower AC is better). Rest with s or . after fights; you heal slowly. Do not rest while hungry. Retreat upstairs if a fight goes badly; only monsters next to you follow.'
+        'Equip the best armor you have (lower AC is better). Rest with s or . after fights; you heal slowly. Do not rest while hungry. If a fight goes badly, the stairs down are an escape; only monsters next to you follow. You cannot go back up until you have the Amulet.'
       ] },
     { id: 'hunger', title: 'Food and hunger',
       tiers: [
@@ -258,7 +290,7 @@ var RogueData = (function () {
   ];
 
   return {
-    MONSTERS: MONSTERS, KINDS: KINDS, ARMOR: ARMOR, WEAPONS: WEAPONS,
+    MONSTERS: MONSTERS, SYMBOLS: SYMBOLS, STATUS: STATUS, KINDS: KINDS, ARMOR: ARMOR, WEAPONS: WEAPONS,
     ITEM_NOTES: ITEM_NOTES, COMMANDS: COMMANDS, HINTS: HINTS
   };
 })();

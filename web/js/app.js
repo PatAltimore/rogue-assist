@@ -311,7 +311,7 @@
     var tips = [];
     function tip(cls, text) { tips.push({ cls: cls, text: text }); }
     var pct = s.maxHp ? s.hp / s.maxHp : 1;
-    if (pct <= 0.3) tip('warn', 'Health is low (' + s.hp + '/' + s.maxHp + '). Step back from the fight, quaff a known healing potion, or retreat to the stairs. Resting with s or . heals slowly.');
+    if (pct <= 0.3) tip('warn', 'Health is low (' + s.hp + '/' + s.maxHp + '). Step back from the fight, quaff a known healing potion, or take the stairs down (only monsters next to you follow). Resting with s or . heals slowly.');
     if (s.hunger >= 3) tip('warn', 'You are Faint from hunger. Eat now (e).');
     else if (s.hunger === 2) tip('warn', 'You are Weak from hunger. Eat soon (e).');
     else if (s.hunger === 1) tip('', 'You are Hungry. Eat (e) when it is safe.');
@@ -462,6 +462,21 @@
   function renderRef() {
     var q = $('refSearch').value.trim().toLowerCase();
     var html = '';
+    var syms = D.SYMBOLS.filter(function (r) {
+      return !q || r[0].toLowerCase() === q || r[0].toLowerCase().split(' ').indexOf(q) >= 0 || r[1].toLowerCase().indexOf(q) >= 0 ||
+        r[2].toLowerCase().indexOf(q) >= 0 || (r[0] === 'A-Z' && /^[a-z]$/.test(q));
+    });
+    if (syms.length) {
+      html += '<h2>Map symbols</h2><table class="ref">' + syms.map(function (r) {
+        return '<tr><td class="l sym">' + escapeHtml(r[0]) + '</td><td>' + escapeHtml(r[1]) + '<span class="ref-note">' + escapeHtml(r[2]) + '</span></td></tr>';
+      }).join('') + '</table>';
+    }
+    var stat = D.STATUS.filter(function (r) { return !q || r[0].toLowerCase().indexOf(q) >= 0 || r[1].toLowerCase().indexOf(q) >= 0 || 'status line'.indexOf(q) >= 0; });
+    if (stat.length) {
+      html += '<h2>Status line</h2><table class="ref">' + stat.map(function (r) {
+        return '<tr><td class="l">' + escapeHtml(r[0]) + '</td><td>' + escapeHtml(r[1]) + '</td></tr>';
+      }).join('') + '</table>';
+    }
     var mons = D.MONSTERS.filter(function (m) {
       return !q || m[0].toLowerCase() === q || m[1].indexOf(q) >= 0 || m[6].toLowerCase().indexOf(q) >= 0;
     });

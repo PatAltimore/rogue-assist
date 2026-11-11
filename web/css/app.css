@@ -226,6 +226,7 @@ table.ref { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
 table.ref th, table.ref td { text-align: left; padding: 4px 6px; border-bottom: 1px solid var(--border); vertical-align: top; }
 table.ref th { color: var(--muted); font-weight: 600; }
 table.ref td.l { font-family: var(--font-mono); color: var(--c-mon); font-weight: 700; }
+table.ref td.sym { color: var(--accent); white-space: nowrap; }
 .ref-note { color: var(--muted); display: block; font-size: 0.78rem; }
 .tag { font-size: 0.7rem; padding: 1px 6px; border-radius: 8px; background: var(--panel-2); border: 1px solid var(--border); margin-left: 4px; }
 .tag.good { color: var(--good); } .tag.bad { color: var(--danger); }
