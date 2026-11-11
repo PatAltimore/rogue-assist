@@ -64,6 +64,7 @@ typedef struct _win_st {
     int _own;           /* 1 if _base was allocated for this window */
     chtype _attr;
     int _dirty;         /* changed since the last wrefresh(); getch() flushes stdscr */
+    unsigned char _touch[SHIM_ROWS]; /* rows changed since the last wrefresh(), like curses' touched lines */
 } WINDOW;
 
 extern WINDOW *stdscr, *curscr;

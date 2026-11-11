@@ -253,14 +253,17 @@ code { font-family: var(--font-mono); background: var(--panel-2); padding: 0 4px
 .hud-status span { background: rgba(8, 9, 12, 0.78); border: 1px solid var(--border); border-radius: 6px; padding: 2px 8px; font-size: 0.85rem; }
 .hud-status .low { border-color: var(--danger); color: var(--danger); }
 
-.mode-3d .screen-wrap { position: absolute; inset: 0; z-index: 20; display: none; background: transparent; }
-.mode-3d.needs-text .view3d-head { position: relative; z-index: 30; }
-.mode-3d .screen { opacity: var(--ov, 0.9); text-shadow: 0 0 2px #000, 0 0 5px #000, 0 0 9px #000; }
-.mode-3d.peek .screen-wrap { cursor: pointer; }
+.mode-3d .screen-wrap { position: absolute; inset: 0; z-index: 20; display: flex; background: transparent; border: none; overflow: hidden; pointer-events: none; }
+.mode-3d .screen-wrap .overlay { pointer-events: auto; }
+.mode-3d .screen { opacity: var(--ov, 0.25); text-shadow: 0 0 2px #000, 0 0 5px #000, 0 0 9px #000; }
+/* Menus the game opens (inventory, help...) are shown clearly whatever the slider says. */
+.mode-3d.needs-text .screen-wrap { padding-bottom: 48px; }
+.mode-3d.needs-text .screen { opacity: var(--ov-menu, 0.9); }
+/* Messages and status are always in the HUD, so the text layer leaves those rows out. */
+.mode-3d:not(.needs-text) .screen .row:first-child, .mode-3d:not(.needs-text) .screen .row:last-child { visibility: hidden; }
 .ov-label { display: none; align-items: center; gap: 6px; font-size: 0.8rem; color: var(--muted); }
 .ov-label input { width: 80px; accent-color: var(--accent); }
 .mode-3d .ov-label:not([hidden]) { display: inline-flex; }
-.mode-3d.needs-text .screen-wrap { display: flex; }
 .mode-3d .screen { margin: auto; }
 .mode-3d .view3d-stage { height: clamp(380px, 64vh, 720px); }
 .mode-3d .view3d-help, .mode-3d #btnView3d, .mode-3d .status-note { display: none; }
@@ -304,5 +307,5 @@ code { font-family: var(--font-mono); background: var(--panel-2); padding: 0 4px
   @keyframes blink { 50% { background: transparent; } }
 }
 
-/* The text pop-up already shows the messages and status, so hide the 3D versions behind it. */
-.mode-3d.needs-text .hud:not([hidden]) { display: none; }
+/* While a menu is up its own text fills the top, so only the status bar stays. */
+.mode-3d.needs-text .hud-top:not([hidden]) { display: none; }

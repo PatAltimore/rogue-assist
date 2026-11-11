@@ -17,6 +17,21 @@ EMSCRIPTEN_KEEPALIVE int shim_cursor_x(void) { return screen_cx; }
 
 #define CELL(w, y, x) ((w)->_base[(y) * (w)->_stride + (x)])
 
+static void touch_row(WINDOW *w, int y)
+{
+    if (y >= 0 && y < SHIM_ROWS)
+        w->_touch[y] = 1;
+    w->_dirty = 1;
+}
+
+static void touch_all(WINDOW *w)
+{
+    int y;
+    for (y = 0; y < SHIM_ROWS; y++)
+        w->_touch[y] = 1;
+    w->_dirty = 1;
+}
+
 static WINDOW *alloc_win(int lines, int cols, int y, int x)
 {
     WINDOW *w = calloc(1, sizeof *w);
@@ -24,6 +39,7 @@ static WINDOW *alloc_win(int lines, int cols, int y, int x)
     w->_maxx = cols;
     w->_begy = y;
     w->_begx = x;
+    touch_all(w);
     return w;
 }
 
@@ -99,7 +115,7 @@ int waddch(WINDOW *w, chtype c)
 {
     int ch = c & A_CHARTEXT;
 
-    w->_dirty = 1;
+    touch_row(w, w->_cury);
 
     if (ch == '\n') {
         wclrtoeol(w);
@@ -127,6 +143,7 @@ int waddch(WINDOW *w, chtype c)
         w->_curx = 0;
         if (w->_cury < w->_maxy - 1)
             w->_cury++;
+        touch_row(w, w->_cury);
     }
     CELL(w, w->_cury, w->_curx) = ch | (c & A_STANDOUT) | w->_attr;
     w->_curx++;
@@ -192,7 +209,7 @@ int mvprintw(int y, int x, const char *fmt, ...)
 int wclrtoeol(WINDOW *w)
 {
     int c;
-    w->_dirty = 1;
+    touch_row(w, w->_cury);
     for (c = w->_curx; c < w->_maxx; c++)
         CELL(w, w->_cury, c) = ' ';
     return OK;
@@ -200,7 +217,7 @@ int wclrtoeol(WINDOW *w)
 
 int wclear(WINDOW *w)
 {
-    w->_dirty = 1;
+    touch_all(w);
     fill_blank(w);
     w->_cury = w->_curx = 0;
     return OK;
@@ -221,7 +238,12 @@ int wrefresh(WINDOW *w)
         return OK;
     w->_dirty = 0;
     shim_overlay = (w != stdscr);
-    for (r = 0; r < w->_maxy; r++) {
+    /* Like curses, only rows changed since the last refresh are copied, so a
+     * pop-up window is not painted over by a later stdscr refresh. */
+    for (r = 0; r < w->_maxy && r < SHIM_ROWS; r++) {
+        if (!w->_touch[r])
+            continue;
+        w->_touch[r] = 0;
         for (c = 0; c < w->_maxx; c++) {
             int sy = w->_begy + r, sx = w->_begx + c;
             if (sy < SHIM_ROWS && sx < SHIM_COLS)
@@ -241,10 +263,11 @@ int overwrite(WINDOW *src, WINDOW *dst)
     for (r = 0; r < src->_maxy && r < dst->_maxy; r++)
         for (c = 0; c < src->_maxx && c < dst->_maxx; c++)
             CELL(dst, r, c) = CELL(src, r, c);
+    touch_all(dst);
     return OK;
 }
 
-int touchwin(WINDOW *w) { w->_dirty = 1; return OK; }
+int touchwin(WINDOW *w) { touch_all(w); return OK; }
 int clearok(WINDOW *w, int f) { (void)w; (void)f; return OK; }
 int raw(void) { return OK; }
 int noraw(void) { return OK; }
@@ -324,7 +347,9 @@ int getch(void)
     int k;
 
     /* Like real curses, getch() first flushes any pending stdscr changes. */
-    if (stdscr && stdscr->_dirty)
+    /* ...but never over a pop-up window (inventory, help): the game restores
+     * stdscr itself with touchwin() when it is done with the pop-up. */
+    if (stdscr && stdscr->_dirty && !shim_overlay)
         wrefresh(stdscr);
     for (;;) {
         k = shim_wait_key();

@@ -180,7 +180,11 @@
     var perCol = probe.getBoundingClientRect().width / 80 / 100; // width per column per 1px of font
     document.body.removeChild(probe);
     var fit = Math.floor(avail / (COLS * perCol));
-    if (mode === '3d') fit = Math.min(fit, Math.floor((wrap.clientHeight - 18) / (ROWS * 1.2)));
+    if (mode === '3d') {
+      var cs = getComputedStyle(wrap);
+      var availH = wrap.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom) - 2;
+      fit = Math.min(fit, Math.floor(availH / (ROWS * 1.2)));
+    }
     // On a phone the whole 80 columns are too small to read, so keep a minimum
     // size and let the view scroll sideways to follow the cursor.
     var floor = window.innerWidth < 860 ? 10 : 6;
@@ -228,7 +232,6 @@
       if (e.key === 'Enter' || !ae.closest('#gamePane')) return;
       ae.blur();
     }
-    if (e.key === 'Escape' && typeof peek !== 'undefined' && peek && mode === '3d') { peek = false; syncTextOverlay(true); e.preventDefault(); return; }
     var arrow = { ArrowLeft: 'h', ArrowDown: 'j', ArrowUp: 'k', ArrowRight: 'l', Home: 'y', PageUp: 'u', End: 'b', PageDown: 'n' }[e.key];
     var handled = true;
     if (arrow) sendKey((e.shiftKey ? arrow.toUpperCase() : arrow).charCodeAt(0));
@@ -648,19 +651,17 @@
   // ---- main view: text (default) or 3D with the text screen as a pop-up ----
 
   var mode = store.get('rogue-mode', '2d') === '3d' ? '3d' : '2d';
-  var peek = false;
   var hudLog = [];
   var hudTimer = null;
 
   function setMode(m) {
     if (m === '3d' && !(window.View3D && View3D.isOk())) m = '2d';
     mode = m;
-    peek = false;
     store.set('rogue-mode', m);
     $('gamePane').classList.toggle('mode-3d', m === '3d');
     $('modeText').setAttribute('aria-pressed', m === '2d');
     $('mode3d').setAttribute('aria-pressed', m === '3d');
-    $('btnPeek').hidden = $('ovLabel').hidden = m !== '3d';
+    $('ovLabel').hidden = m !== '3d';
     $('hudMsg').hidden = $('hudStatus').hidden = m !== '3d';
     if (window.View3D) View3D.setVisible(view3dActive());
     syncTextOverlay(true);
@@ -679,14 +680,12 @@
   var textShown = null;
   function syncTextOverlay(force) {
     if (mode !== '3d') { $('gamePane').classList.remove('needs-text'); textShown = null; return; }
-    var show = peek || needsText();
+    var show = needsText();
     if (show === textShown && !force) return;
     textShown = show;
     $('gamePane').classList.toggle('needs-text', show);
-    $('gamePane').classList.toggle('peek', peek);
-    $('btnPeek').setAttribute('aria-pressed', peek);
-    $('btnPeek').textContent = peek ? 'Back to 3D' : 'Text';
-    if (show) { fitScreen(); renderScreen(); }
+    fitScreen();
+    renderScreen();
   }
 
   function row0Text() {
@@ -699,7 +698,7 @@
 
   function updateHud(s) {
     if (mode !== '3d') return;
-    var text = textShown && !peek ? '' : row0Text();
+    var text = textShown ? '' : row0Text();
     var now = Date.now();
     if (text && (!hudLog.length || hudLog[hudLog.length - 1].text !== text)) {
       hudLog.push({ text: text, t: now });
@@ -745,12 +744,14 @@
     setView3dOpen(view3dOpen);
     $('modeText').addEventListener('click', function () { setMode('2d'); });
     $('mode3d').addEventListener('click', function () { setMode('3d'); });
-    $('btnPeek').addEventListener('click', function () { peek = !peek; syncTextOverlay(true); updateHud(lastState); });
-    // A peek closes with a click on the text, or with Escape (handled with the keyboard).
-    $('screenWrap').addEventListener('click', function () { if (mode === '3d' && peek) { peek = false; syncTextOverlay(true); } });
     var ov = $('ovOpacity');
-    ov.value = store.get('rogue-text-opacity', '90');
-    function applyOv() { $('gamePane').style.setProperty('--ov', String(ov.value / 100)); store.set('rogue-text-opacity', ov.value); }
+    ov.value = store.get('rogue-text-opacity', '25');
+    function applyOv() {
+      var v = ov.value / 100;
+      $('gamePane').style.setProperty('--ov', String(v));
+      $('gamePane').style.setProperty('--ov-menu', String(Math.max(v, 0.9)));
+      store.set('rogue-text-opacity', ov.value);
+    }
     ov.addEventListener('input', applyOv);
     applyOv();
     setMode(mode);
