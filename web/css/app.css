@@ -250,10 +250,8 @@ code { font-family: var(--font-mono); background: var(--panel-2); padding: 0 4px
 .view3d.collapsed .view3d-stage, .view3d.collapsed .view3d-help, .view3d.collapsed [data-v3] { display: none; }
 
 @media (max-width: 860px) {
-  .view3d-stage { height: 240px; }
+  .view3d-stage { height: 200px; }
   .view3d-help { display: none; }
-  .touch { order: 1; }
-  .view3d { order: 2; }
   .layout { grid-template-columns: minmax(0, 1fr); padding: 8px 16px 16px; }
   .assist { max-height: none; }
   .menu-btn { display: inline-block; }
