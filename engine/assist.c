@@ -22,9 +22,13 @@
 #define CH_REGEN     10
 
 static int cheated;
+int assist_at_command;          /* 1 while waiting at the top-level command prompt */
+extern int shim_overlay;        /* 1 while a window other than stdscr is on screen */
 
 /* ---- stats ---------------------------------------------------------- */
 
+EMSCRIPTEN_KEEPALIVE int assist_at_prompt(void) { return assist_at_command; }
+EMSCRIPTEN_KEEPALIVE int assist_text_overlay(void) { return shim_overlay; }
 EMSCRIPTEN_KEEPALIVE int assist_ingame(void) { return stdscr != NULL && playing; }
 EMSCRIPTEN_KEEPALIVE int assist_cheated(void) { return cheated || noscore; }
 EMSCRIPTEN_KEEPALIVE int assist_level(void) { return level; }
@@ -130,7 +134,9 @@ EMSCRIPTEN_KEEPALIVE int assist_cell(int y, int x)
     if (stdscr == NULL || y < 1 || y >= NUMLINES - 1 || x < 0 || x >= NUMCOLS)
         return 0;
     /* stdscr is the game's own memory of the level (row 0 is messages). */
-    ch = mvwinch(stdscr, y, x) & A_CHARTEXT;
+    /* Read the cell directly: wmove() would mark stdscr changed and make the
+     * next getch() repaint it over any pop-up the game is showing. */
+    ch = stdscr->_base[y * stdscr->_stride + x] & A_CHARTEXT;
     return ch == ' ' ? 0 : ch;
 }
 

@@ -64,6 +64,7 @@
     exited = true;
     syncSaves();
     renderScreen();
+    syncTextOverlay(true);
     showOverlay('The game is over. Your save (if any) and the score list are kept in this browser.', true);
   }
 
@@ -168,6 +169,7 @@
 
   function fitScreen() {
     var wrap = $('screenWrap');
+    if (!wrap.clientWidth) return; // hidden (3D mode without the text overlay)
     var avail = wrap.clientWidth - 18;
     var zoom = parseFloat(store.get('rogue-zoom', '1')) || 1;
     // Measure the glyph width of the monospace font at a known size.
@@ -178,6 +180,7 @@
     var perCol = probe.getBoundingClientRect().width / 80 / 100; // width per column per 1px of font
     document.body.removeChild(probe);
     var fit = Math.floor(avail / (COLS * perCol));
+    if (mode === '3d') fit = Math.min(fit, Math.floor((wrap.clientHeight - 18) / (ROWS * 1.2)));
     // On a phone the whole 80 columns are too small to read, so keep a minimum
     // size and let the view scroll sideways to follow the cursor.
     var floor = window.innerWidth < 860 ? 10 : 6;
@@ -602,7 +605,7 @@
   var view3dOpen = store.get('rogue-3d', '1') === '1';
 
   function update3d(s) {
-    if (!view3dOpen || !window.View3D || !View3D.isOk()) return;
+    if (!view3dActive() || !window.View3D || !View3D.isOk()) return;
     var grid = [];
     for (var y = 0; y < ROWS; y++) {
       var row = new Array(COLS);
@@ -623,14 +626,98 @@
     });
   }
 
+  function view3dActive() { return mode === '3d' || view3dOpen; }
+
   function setView3dOpen(open) {
     view3dOpen = open;
     store.set('rogue-3d', open ? '1' : '0');
     $('view3d').classList.toggle('collapsed', !open);
     $('btnView3d').textContent = open ? 'Hide' : 'Show 3D';
     $('btnView3d').setAttribute('aria-expanded', open);
-    if (window.View3D) View3D.setVisible(open);
-    if (open && lastState) update3d(lastState);
+    if (window.View3D) View3D.setVisible(view3dActive());
+    if (view3dActive() && lastState) update3d(lastState);
+  }
+
+  // ---- main view: text (default) or 3D with the text screen as a pop-up ----
+
+  var mode = store.get('rogue-mode', '2d') === '3d' ? '3d' : '2d';
+  var peek = false;
+  var hudLog = [];
+  var hudTimer = null;
+
+  function setMode(m) {
+    if (m === '3d' && !(window.View3D && View3D.isOk())) m = '2d';
+    mode = m;
+    peek = false;
+    store.set('rogue-mode', m);
+    $('gamePane').classList.toggle('mode-3d', m === '3d');
+    $('modeText').setAttribute('aria-pressed', m === '2d');
+    $('mode3d').setAttribute('aria-pressed', m === '3d');
+    $('btnPeek').hidden = m !== '3d';
+    $('hudMsg').hidden = $('hudStatus').hidden = m !== '3d';
+    if (window.View3D) View3D.setVisible(view3dActive());
+    syncTextOverlay(true);
+    fitScreen();
+    if (lastState) { update3d(lastState); updateHud(lastState); }
+  }
+
+  // In 3D mode the text screen shows only when the game wants more than a
+  // command: a menu, the inventory, help, the tombstone, and so on.
+  function needsText() {
+    if (exited || !gameRunning) return true;
+    if (call('at_prompt')) return false;
+    return !!call('text_overlay') || !screenState.mapMode;
+  }
+
+  var textShown = null;
+  function syncTextOverlay(force) {
+    if (mode !== '3d') { $('gamePane').classList.remove('needs-text'); textShown = null; return; }
+    var show = peek || needsText();
+    if (show === textShown && !force) return;
+    textShown = show;
+    $('gamePane').classList.toggle('needs-text', show);
+    $('btnPeek').setAttribute('aria-pressed', peek);
+    $('btnPeek').textContent = peek ? 'Back to 3D' : 'Text';
+    if (show) { fitScreen(); renderScreen(); }
+  }
+
+  function row0Text() {
+    var cells = screenState.cells;
+    if (!cells) return '';
+    var t = '';
+    for (var c = 0; c < COLS; c++) { var ch = cells[c] & 0xff; t += ch >= 32 && ch < 127 ? String.fromCharCode(ch) : ' '; }
+    return t.replace(/\s+$/, '');
+  }
+
+  function updateHud(s) {
+    if (mode !== '3d') return;
+    var text = textShown && !peek ? '' : row0Text();
+    var now = Date.now();
+    if (text && (!hudLog.length || hudLog[hudLog.length - 1].text !== text)) {
+      hudLog.push({ text: text, t: now });
+      if (hudLog.length > 4) hudLog.shift();
+    }
+    var more = /--More--/.test(text);
+    var shown = hudLog.filter(function (m) { return now - m.t < 12000; });
+    var html = shown.map(function (m, i) {
+      var last = i === shown.length - 1;
+      var t = escapeHtml(m.text.replace(/--More--/, '').trim());
+      return t ? '<div class="hud-line' + (last ? '' : ' old') + '">' + t + '</div>' : '';
+    }).join('');
+    if (more) html += '<div><button class="hud-line hud-more" id="hudMore">Continue (Space)</button></div>';
+    $('hudMsg').innerHTML = html;
+    var more_ = $('hudMore');
+    if (more_) more_.addEventListener('click', function () { sendKey(32); });
+    clearTimeout(hudTimer);
+    if (shown.length) hudTimer = setTimeout(function () { if (lastState) updateHud(lastState); }, 12100);
+
+    var pct = s.maxHp ? s.hp / s.maxHp : 1;
+    var hunger = ['', 'Hungry', 'Weak', 'Faint'][s.hunger] || '';
+    $('hudStatus').innerHTML = '<div class="hud-status">' +
+      '<span class="' + (pct <= 0.3 ? 'low' : '') + '">HP ' + s.hp + '/' + s.maxHp + '</span>' +
+      '<span>Lvl ' + s.level + '</span><span>Gold ' + s.gold + '</span><span>Arm ' + s.ac + '</span>' +
+      '<span>Str ' + s.str + '</span><span>XP ' + s.xpLevel + '</span>' +
+      (hunger ? '<span class="low">' + hunger + '</span>' : '') + '</div>';
   }
 
   function setupView3d() {
@@ -639,6 +726,7 @@
       Array.prototype.forEach.call(document.querySelectorAll('[data-v3]'), function (b) { b.hidden = true; });
       $('view3dHelp').hidden = true;
       $('btnView3d').hidden = true;
+      document.querySelector('.viewmode').hidden = true;
       return;
     }
     document.querySelector('.view3d-tools').addEventListener('click', function (e) {
@@ -647,11 +735,16 @@
     });
     $('btnView3d').addEventListener('click', function () { setView3dOpen(!view3dOpen); });
     setView3dOpen(view3dOpen);
+    $('modeText').addEventListener('click', function () { setMode('2d'); });
+    $('mode3d').addEventListener('click', function () { setMode('3d'); });
+    $('btnPeek').addEventListener('click', function () { peek = !peek; syncTextOverlay(true); updateHud(lastState); });
+    setMode(mode);
   }
   function refreshSidebar() {
     if (!gameRunning) return;
     lastState = readState();
     update3d(lastState);
+    updateHud(lastState);
     if (activeTab === 'status') renderStatus(lastState);
     if (activeTab === 'map') renderMap(lastState);
     if (activeTab === 'ref') renderRef();
@@ -663,6 +756,7 @@
   function onWait() {
     $('overlay').hidden = true;
     renderScreen();
+    syncTextOverlay();
     refreshSidebar();
     var now = Date.now();
     if (now - lastSync > 15000) { lastSync = now; syncSaves(); }

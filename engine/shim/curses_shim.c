@@ -9,6 +9,7 @@ WINDOW *stdscr, *curscr;
 /* The one physical screen. The page reads this through shim_screen(). */
 static chtype screen[SHIM_ROWS * SHIM_COLS];
 static int screen_cy, screen_cx;
+int shim_overlay;   /* last wrefresh() was a window other than stdscr (inventory, help...) */
 
 EMSCRIPTEN_KEEPALIVE chtype *shim_screen(void) { return screen; }
 EMSCRIPTEN_KEEPALIVE int shim_cursor_y(void) { return screen_cy; }
@@ -219,6 +220,7 @@ int wrefresh(WINDOW *w)
     if (w == curscr)
         return OK;
     w->_dirty = 0;
+    shim_overlay = (w != stdscr);
     for (r = 0; r < w->_maxy; r++) {
         for (c = 0; c < w->_maxx; c++) {
             int sy = w->_begy + r, sx = w->_begx + c;

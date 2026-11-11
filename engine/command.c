@@ -76,7 +76,9 @@ command()
 		ch = countch;
 	    else
 	    {
+		assist_at_command = 1;	/* web build: the page watches this */
 		ch = readchar();
+		assist_at_command = 0;
 		move_on = FALSE;
 		if (mpos != 0)		/* Erase message if its there */
 		    msg("");

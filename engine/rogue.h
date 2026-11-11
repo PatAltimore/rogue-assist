@@ -482,6 +482,7 @@ extern unsigned int	numscores;
 extern int	dnum, e_levels[], seed;
 
 extern WINDOW	*hw;
+extern int	assist_at_command;
 
 extern coord	delta, oldpos, stairs;
 
