@@ -74,7 +74,7 @@
     syncTextOverlay(true);
     // The tombstone has been dismissed; show the score list the game printed, and a new-game button.
     $('returnBar').hidden = true;
-    var board = printed.join('\n').replace(/\[Press return to continue\]/, '').trim();
+    var board = printed.filter(function (l) { return !/just a moment while I dig/.test(l); }).join('\n').replace(/\[Press return to continue\]/, '').trim();
     showOverlay('Game over', true, board);
   }
 
