@@ -317,7 +317,8 @@ window.View3D = (function () {
           place(walls, nW++, x, 0.65, y, 1, 1.3, 1, shade(p.wall, 0.9 + 0.2 * hash(x, y)));
           continue;
         }
-        if (ch === '#') {
+        var isCorr = ch === '#' || (data.corr && data.corr[y * 100 + x]);
+        if (isCorr) {
           cellPass[nP] = y * 100 + x;
           place(passes, nP++, x, -0.04, y, 0.94, 0.1, 0.94, shade(p.pass, v));
           if (walk) {
@@ -333,6 +334,10 @@ window.View3D = (function () {
               if (links === 1 && known(y - d[1], x - d[0])) return;
               place(rocks, nR++, x + d[0] * 0.5, 0.65, y + d[1] * 0.5, d[0] ? 0.14 : 1.14, 1.3, d[1] ? 0.14 : 1.14, shade(p.wall, 0.6 + 0.2 * hash(x + nR, y)));
             });
+          }
+          if (ch !== '#' && ch !== '@' && !(ch >= 'A' && ch <= 'Z')) {
+            var it2 = Models3D.item(ch, hash(x + 7, y + 3));
+            if (it2) { it2.scale.set(1.4, 1.4, 1.4); addAt(it2, x, 0.1, y, 2); }
           }
           continue;
         }

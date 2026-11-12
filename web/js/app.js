@@ -813,6 +813,7 @@
   // The 3D panel under the text screen. It only does work while it is open.
   var view3dOpen = store.get('rogue-3d', '1') === '1';
 
+  var terr = {}, terrLevel = -1;
   function update3d(s) {
     if (!view3dActive() || !window.View3D || !View3D.isOk()) return;
     var grid = [];
@@ -829,9 +830,28 @@
         monsters.push({ ch: String.fromCharCode(call('monster_type', i, 0)), x: call('monster_x', i, 0), y: call('monster_y', i, 0), radar: true });
       }
     }
+    // The hero, monsters and items cover the square they stand on, so remember which
+    // squares are corridor and tell the 3D view (otherwise a corridor loses its walls there).
+    if (terrLevel !== s.level) { terr = {}; terrLevel = s.level; }
+    var corr = {};
+    for (y = 1; y < ROWS - 1; y++) for (x = 0; x < COLS; x++) {
+      var code = grid[y][x], k = y * 100 + x;
+      if (!code) continue;
+      if (code === 35) { terr[k] = 35; continue; }
+      if ('.+|-%^'.indexOf(String.fromCharCode(code)) >= 0) { terr[k] = code; continue; }
+      if (terr[k] === 35) { corr[k] = 1; continue; }
+      if (terr[k] === undefined) {
+        var pas = 0, other = 0;
+        [[0, 1], [0, -1], [1, 0], [-1, 0]].forEach(function (d) {
+          var nc = (grid[y + d[0]] || [])[x + d[1]] || 0;
+          if (nc === 35) pas++; else if (nc === 46 || nc === 124 || nc === 45) other++;
+        });
+        if (pas && !other) corr[k] = 1;
+      }
+    }
     lastGrid = grid;
     View3D.update({
-      grid: grid, hero: { x: s.heroX, y: s.heroY }, level: s.level, monsters: monsters,
+      corr: corr, grid: grid, hero: { x: s.heroX, y: s.heroY }, level: s.level, monsters: monsters,
       stairs: mapOpts.stairs && call('stairs_y') ? { x: call('stairs_x'), y: call('stairs_y') } : null
     });
   }
