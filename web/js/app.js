@@ -317,8 +317,29 @@
   var walker = null;
   var lastGrid = null;
 
+  var prevPos = null;
+
+  // Forward into a wall does nothing, which feels like being stuck. In a corridor, when the way
+  // ahead is blocked, follow the passage if there is only one way on (a bend), otherwise say why.
+  function followPassage(dir) {
+    if (!lastState || !lastGrid) return dir;
+    var hx = lastState.heroX, hy = lastState.heroY, d = DIR_DELTA[dir];
+    if (canStep(hx, hy, d[0], d[1])) return dir;
+    var opts = [];
+    for (var i = 0; i < 8; i++) {
+      var dd = DIR_DELTA[i];
+      if (!canStep(hx, hy, dd[0], dd[1])) continue;
+      if (prevPos && prevPos.x === hx + dd[0] && prevPos.y === hy + dd[1]) continue; // where you came from
+      opts.push(i);
+    }
+    if (opts.length === 1) { View3D.setFacing(opts[0]); return opts[0]; }
+    tellHud(opts.length ? 'Blocked ahead: turn to choose a way (' + opts.length + ' open)' : 'Blocked ahead. A dead end? Try searching with s.');
+    return -1;
+  }
+
   function stepRel(rel, run) {
     var dir = (View3D.getFacing() + rel) & 7;
+    if (rel === 0) { dir = followPassage(dir); if (dir < 0) return; }
     var key = DIR_KEYS[dir];
     if (run || runNext) { key = key.toUpperCase(); setRun(false); }
     sendKey(key.charCodeAt(0));
@@ -1052,7 +1073,9 @@
   }
   function refreshSidebar() {
     if (!gameRunning) return;
+    var before = lastState;
     lastState = readState();
+    if (before && (before.heroX !== lastState.heroX || before.heroY !== lastState.heroY)) prevPos = { x: before.heroX, y: before.heroY };
     update3d(lastState);
     updateHud(lastState);
     if (activeTab === 'status') renderStatus(lastState);
