@@ -9,12 +9,12 @@ window.View3D = (function () {
 
   var PALETTES = {
     modern: {
-      haze: 0x151b2e, mist: 0x39466e, bg: 0x0b0c10, wall: 0x7a8296, wallTop: 0x9aa3b8, floor: 0x2f3547, pass: 0x6a604f, door: 0xd79b4a,
+      haze: 0x131416, mist: 0x74777f, bg: 0x0b0c10, wall: 0x7a8296, wallTop: 0x9aa3b8, floor: 0x2f3547, pass: 0x6a604f, door: 0xd79b4a,
       stairs: 0xffd166, gold: 0xf4d03f, potion: 0x4fd1c5, scroll: 0xf1ead2, food: 0xa6e36e, weapon: 0xc9d1de,
       armor: 0x7f9cc4, magic: 0xb690ff, trap: 0xff6b4a, mon: 0xff5d5d, hero: 0xffffff, frontier: 0xe3aa4c
     },
     retro: {
-      haze: 0x06240e, mist: 0x187030, bg: 0x020502, wall: 0x2faa4a, wallTop: 0x4cff6e, floor: 0x0b2a12, pass: 0x17602a, door: 0x4cff6e,
+      haze: 0x05160a, mist: 0x2fb356, bg: 0x020502, wall: 0x2faa4a, wallTop: 0x4cff6e, floor: 0x0b2a12, pass: 0x17602a, door: 0x4cff6e,
       stairs: 0xb6ffc4, gold: 0x4cff6e, potion: 0x4cff6e, scroll: 0x4cff6e, food: 0x4cff6e, weapon: 0x4cff6e,
       armor: 0x4cff6e, magic: 0x4cff6e, trap: 0xb6ffc4, mon: 0xb6ffc4, hero: 0xffffff, frontier: 0xb6ffc4
     }
@@ -230,7 +230,7 @@ window.View3D = (function () {
       var x = (i * 53 % 100) / 100 * S, y = (i * 37 % 100) / 100 * S, r = 22 + (i * 17 % 30);
       [-S, 0, S].forEach(function (dx) {
         var gr = g.createRadialGradient(x + dx, y, 0, x + dx, y, r);
-        gr.addColorStop(0, 'rgba(255,255,255,0.28)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
+        gr.addColorStop(0, 'rgba(255,255,255,0.5)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
         g.fillStyle = gr; g.fillRect(0, 0, S, S);
       });
     }
@@ -253,19 +253,22 @@ window.View3D = (function () {
   function veil(x, y, dx, dy) {
     var p = pal();
     if (!veilKit || veilKit.theme !== state.theme) {
-      var tex = mistTexture();
+      var tex = mistTexture(), tex2 = tex.clone();
+      tex2.needsUpdate = true;
+      tex2.repeat.set(1, 1.3);
       veilKit = {
-        theme: state.theme, tex: tex,
+        theme: state.theme, tex: tex, tex2: tex2,
         box: new T.MeshBasicMaterial({ color: p.haze }),
-        mist: new T.MeshBasicMaterial({ color: p.mist, map: tex, alphaMap: softEdge(), transparent: true, opacity: 0.6, depthWrite: false, blending: T.AdditiveBlending, side: T.DoubleSide }),
+        mist: new T.MeshBasicMaterial({ color: p.mist, map: tex, alphaMap: softEdge(), transparent: true, opacity: 0.6, fog: false, depthWrite: false, blending: T.AdditiveBlending, side: T.DoubleSide }),
         boxGeo: [new T.BoxGeometry(0.2, 4, 3.4), new T.BoxGeometry(3.4, 4, 0.2)],
+        mist2: new T.MeshBasicMaterial({ color: p.mist, map: tex2, alphaMap: softEdge(), transparent: true, opacity: 0.6, fog: false, depthWrite: false, blending: T.AdditiveBlending, side: T.DoubleSide }),
         plane: new T.PlaneGeometry(3.4, 2.4)
       };
     }
     var grp = new T.Group();
     grp.add(new T.Mesh(veilKit.boxGeo[dx ? 0 : 1], veilKit.box));
     [0.35, 0.7].forEach(function (back, k) {
-      var pl = new T.Mesh(veilKit.plane, veilKit.mist);
+      var pl = new T.Mesh(veilKit.plane, k ? veilKit.mist2 : veilKit.mist);
       pl.position.set(-dx * back, -0.1 + k * 0.2, -dy * back);
       if (dx) pl.rotation.y = Math.PI / 2;
       grp.add(pl);
@@ -514,7 +517,13 @@ window.View3D = (function () {
           if (a.spin) a.obj.rotation.y = t * 1.8 + a.phase;
         }
       }
-      if (veilKit) { veilKit.tex.offset.x = t * 0.012; veilKit.tex.offset.y = Math.sin(t * 0.3) * 0.05; veilKit.mist.opacity = 0.5 + Math.sin(t * 0.9) * 0.15; }
+      if (veilKit) { // slow drifting, in opposite directions, and a gentle breathing
+        veilKit.tex.offset.x = t * 0.05;
+        veilKit.tex.offset.y = Math.sin(t * 0.5) * 0.12;
+        veilKit.tex2.offset.x = -t * 0.035;
+        veilKit.tex2.offset.y = t * 0.02;
+        veilKit.mist.opacity = veilKit.mist2.opacity = 0.55 + Math.sin(t * 1.3) * 0.3;
+      }
       var pulse = 1 + Math.sin(t * 4) * 0.12;
       for (var j = 0; j < frontierMeshes.length; j++) frontierMeshes[j].scale.set(pulse, pulse, pulse);
       hero.userData.ring.scale.set(pulse, pulse, pulse);
