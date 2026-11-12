@@ -63,6 +63,7 @@ window.View3D = (function () {
     scene.add(ambient, sun, heroLight);
 
     Models3D.init(T);
+    if (window.Backdrop3D) Backdrop3D.init(T, scene);
     buildShared();
     applyTheme();
     bindControls();
@@ -137,6 +138,7 @@ window.View3D = (function () {
     scene.fog = new T.Fog(p.bg, 16, 46);
     ceiling.material.color.set(shade(p.wall, 0.22));
     Models3D.setTheme(state.theme);
+    if (window.Backdrop3D) Backdrop3D.setTheme(state.theme);
     if (hero.userData.model) hero.remove(hero.userData.model);
     hero.userData.model = Models3D.hero();
     hero.add(hero.userData.model);
@@ -155,7 +157,10 @@ window.View3D = (function () {
     camera.fov = walk ? 75 : 45;
     camera.near = walk ? 0.05 : 0.1;
     camera.updateProjectionMatrix();
-    scene.background.set(walk ? p.haze : p.bg);
+    // The overhead view has a dungeon backdrop; first person keeps plain darkness.
+    var bd = !walk && window.Backdrop3D ? Backdrop3D.background() : null;
+    scene.background = bd || new T.Color(walk ? p.haze : p.bg);
+    if (window.Backdrop3D) Backdrop3D.setVisible(!walk);
     scene.fog.color.set(walk ? p.haze : p.bg);
     scene.fog.near = walk ? 0.5 : 16;
     scene.fog.far = walk ? 6.5 : 46;
@@ -614,6 +619,7 @@ window.View3D = (function () {
       }
     }
     var t = now / 1000;
+    if (window.Backdrop3D && state.view !== 'walk' && !state.reduceMotion) Backdrop3D.update(t, dt);
     if (deaths.length) animateDeaths(performance.now());
     if (pops.length) animatePops(performance.now());
     if (!state.reduceMotion) {
