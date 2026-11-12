@@ -152,8 +152,8 @@ window.View3D = (function () {
     camera.fov = walk ? 75 : 45;
     camera.near = walk ? 0.05 : 0.1;
     camera.updateProjectionMatrix();
-    scene.fog.near = walk ? 1.5 : 16;
-    scene.fog.far = walk ? 8.5 : 46;
+    scene.fog.near = walk ? 1.0 : 16;
+    scene.fog.far = walk ? 7 : 46;
     heroLight.intensity = walk ? 1.4 : 1.1;
     ambient.intensity = walk ? 0.45 : 0.6;
     sun.intensity = walk ? 0.3 : 0.65;
@@ -214,6 +214,14 @@ window.View3D = (function () {
     var m = new T.Mesh(g, new T.MeshLambertMaterial({ color: color, emissive: opts.emissive || 0x000000 }));
     m.userData.own = true;
     return m;
+  }
+
+  // A panel the colour of the fog, standing across an unexplored way on, so that
+  // the far end fades into darkness and nothing beyond it shows through.
+  function veil(x, y, dx, dy) {
+    var m = new T.Mesh(new T.BoxGeometry(dx ? 0.2 : 3.4, 4, dy ? 0.2 : 3.4), new T.MeshBasicMaterial({ color: pal().bg }));
+    m.userData.own = true;
+    addAt(m, x + dx * 1.6, 1.2, y + dy * 1.6, 0);
   }
 
   function addAt(obj, x, y, z, bob) {
@@ -331,7 +339,7 @@ window.View3D = (function () {
             [[1, 0], [-1, 0], [0, 1], [0, -1]].forEach(function (d) {
               var ny = y + d[1], nx = x + d[0];
               if (ny < 1 || ny > ROWS - 2 || nx < 0 || nx >= COLS || data.grid[ny][nx]) return;
-              if (links === 1 && known(y - d[1], x - d[0])) return;
+              if (links === 1 && known(y - d[1], x - d[0])) { veil(x, y, d[0], d[1]); return; }
               place(rocks, nR++, x + d[0] * 0.5, 0.65, y + d[1] * 0.5, d[0] ? 0.14 : 1.14, 1.3, d[1] ? 0.14 : 1.14, shade(p.wall, 0.6 + 0.2 * hash(x + nR, y)));
             });
           }
@@ -346,6 +354,12 @@ window.View3D = (function () {
         if (ch === '+') {
           var left = String.fromCharCode(data.grid[y][x - 1] || 0), right = String.fromCharCode(data.grid[y][x + 1] || 0);
           addAt(Models3D.door(left === '-' || right === '-' || left === '+' || right === '+'), x, 0, y, 0);
+          if (walk) [[0, 1], [0, -1], [1, 0], [-1, 0]].forEach(function (d) {
+            var oy = y + d[0], ox = x + d[1], iy = y - d[0], ix = x - d[1];
+            var out = oy > 0 && oy < ROWS - 1 && ox >= 0 && ox < COLS && !data.grid[oy][ox];
+            var inn = iy > 0 && iy < ROWS - 1 && ix >= 0 && ix < COLS && data.grid[iy][ix];
+            if (out && inn) veil(x, y, d[1], d[0]);
+          });
           var open = [[0, 1], [0, -1], [1, 0], [-1, 0]].some(function (d) {
             var ny = y + d[0], nx = x + d[1];
             return ny > 0 && ny < ROWS - 1 && nx >= 0 && nx < COLS && !data.grid[ny][nx];
