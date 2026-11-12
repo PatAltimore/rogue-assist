@@ -399,6 +399,22 @@ window.View3D = (function () {
   }
 
   // data: { grid[y][x] -> char code (0 = unexplored), hero:{x,y}, level, monsters:[{ch,x,y}], stairs:{x,y}|null }
+  // Which way does the door's wall run? True when it runs left-right (a horizontal wall).
+  // Walls beside the door decide it; when they have not been seen yet, the way through
+  // (the room floor and the corridor on either side) says which wall it must be in.
+  function doorAcross(grid, x, y) {
+    var at = function (yy, xx) { return yy >= 1 && yy <= ROWS - 2 && xx >= 0 && xx < COLS ? grid[yy][xx] : 0; };
+    var isH = function (c) { return c === 45; }, isV = function (c) { return c === 124; };
+    var open = function (c) { return c && c !== 45 && c !== 124 && c !== 43; };
+    var hz = isH(at(y, x - 1)) || isH(at(y, x + 1)), vt = isV(at(y - 1, x)) || isV(at(y + 1, x));
+    if (hz !== vt) return hz;
+    var ud = open(at(y - 1, x)) || open(at(y + 1, x)), lr = open(at(y, x - 1)) || open(at(y, x + 1));
+    if (ud !== lr) return ud;       // a way through above/below means the wall runs left-right
+    var hz2 = at(y, x - 1) === 43 || at(y, x + 1) === 43, vt2 = at(y - 1, x) === 43 || at(y + 1, x) === 43;
+    if (hz2 !== vt2) return hz2;
+    return true;
+  }
+
   function update(data) {
     if (!state.ok || !state.visible) return;
     var p = pal();
@@ -465,8 +481,7 @@ window.View3D = (function () {
         cellFloor[nF] = y * 100 + x;
         place(floors, nF++, x, -0.05, y, 0.98, 0.1, 0.98, shade(p.floor, v));
         if (ch === '+') {
-          var left = String.fromCharCode(data.grid[y][x - 1] || 0), right = String.fromCharCode(data.grid[y][x + 1] || 0);
-          addAt(Models3D.door(left === '-' || right === '-' || left === '+' || right === '+'), x, 0, y, 0);
+          addAt(Models3D.door(doorAcross(data.grid, x, y)), x, 0, y, 0);
           if (walk) [[0, 1], [0, -1], [1, 0], [-1, 0]].forEach(function (d) {
             var oy = y + d[0], ox = x + d[1], iy = y - d[0], ix = x - d[1];
             var out = oy > 0 && oy < ROWS - 1 && ox >= 0 && ox < COLS && !data.grid[oy][ox];
