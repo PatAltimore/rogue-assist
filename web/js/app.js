@@ -49,6 +49,12 @@
 
   function sendKey(code) {
     if (exited) return;
+    // The game ignores every key but Space while it shows --More--. In the 3D views the arrow
+    // keys and buttons are movement, so answer the --More-- first instead of leaving you stuck.
+    if (is3d() && code !== 32 && code !== 27 && code < 0x1000 && screenState.cells && /--More--/.test(row0Text())) {
+      queue.length = 0;
+      if (waiter) { var w0 = waiter; waiter = null; w0(32); } else queue.push(32);
+    }
     if (screenState.returnPrompt) {
       // At the closing "press return" box only Enter, Space or Escape do anything.
       if (code !== 10 && code !== 32 && code !== 27) return;
@@ -973,7 +979,7 @@
       hudLog.push({ text: text, t: now });
       if (hudLog.length > 4) hudLog.shift();
     }
-    var more = /--More--/.test(text);
+    var more = /--More--/.test(row0Text());
     var shown = hudLog.filter(function (m) { return now - m.t < 12000; });
     var html = shown.map(function (m, i) {
       var last = i === shown.length - 1;
