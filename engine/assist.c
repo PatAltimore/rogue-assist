@@ -268,19 +268,17 @@ static void reveal_map(void)
             case FLOOR:
                 if (!(pp->p_flags & F_REAL)) {
                     pp->p_ch = TRAP;
-                    pp->p_flags |= (F_SEEN | F_REAL);
+                    pp->p_flags |= F_REAL;
                 }
+                pp->p_flags |= F_SEEN;
                 break;
             default:
-                if (pp->p_flags & F_PASS) {
-                    pp->p_flags |= (F_SEEN | F_REAL);
-                }
+                if (pp->p_flags & F_PASS)
+                    pp->p_flags |= F_REAL;
                 break;
             }
-            if (pp->p_ch != ' ' && (pp->p_flags & F_SEEN)) {
-                if (pp->p_monst == NULL || !on(player, SEEMONST))
-                    mvaddch(y, x, pp->p_ch);
-            } else if (pp->p_ch == DOOR || pp->p_ch == STAIRS) {
+            /* Unlike the scroll, show everything: walls, doors, passages, stairs and room floors. */
+            if (pp->p_ch != ' ') {
                 pp->p_flags |= F_SEEN;
                 if (pp->p_monst == NULL || !on(player, SEEMONST))
                     mvaddch(y, x, pp->p_ch);
