@@ -158,38 +158,29 @@ window.Backdrop3D = (function () {
       g.restore();
     }
     g.lineWidth = 1.8;
-    // a dragon's head in profile, snarling, with horns, a spined neck and a long fanged jaw
-    g.save();
-    g.scale(1.05, 1.05); g.translate(-20, 2);
-    g.lineJoin = 'round'; g.lineWidth = 3;
-    g.beginPath();                                                      // skull, snout and upper lip
-    g.moveTo(-70, 12); g.bezierCurveTo(-72, -42, -20, -78, 40, -72); g.bezierCurveTo(82, -69, 112, -56, 132, -34);
-    g.bezierCurveTo(122, -26, 104, -24, 88, -22); g.lineTo(22, -4); g.stroke();
-    g.beginPath();                                                      // lower jaw and throat
-    g.moveTo(22, -4); g.bezierCurveTo(42, 20, 92, 30, 126, 22); g.bezierCurveTo(112, 52, 72, 62, 30, 52);
-    g.bezierCurveTo(4, 72, -16, 98, -22, 134); g.stroke();
-    g.beginPath();                                                      // back of the neck
-    g.moveTo(-70, 12); g.bezierCurveTo(-84, 52, -66, 100, -52, 140); g.stroke();
-    g.lineWidth = 2;
-    for (i = 0; i < 7; i++) {                                           // spines down the neck
-      var u = i / 6, sx = -70 - 14 * Math.sin(u * 3.1) + u * 14, sy = 10 + u * 128;
-      g.beginPath(); g.moveTo(sx, sy - 9); g.lineTo(sx - 20 + u * 6, sy + 2); g.lineTo(sx, sy + 9); g.stroke();
-    }
-    g.beginPath();                                                      // two swept-back horns
-    g.moveTo(-14, -68); g.bezierCurveTo(-34, -98, -76, -104, -116, -122); g.bezierCurveTo(-86, -88, -54, -72, -2, -72); g.closePath(); g.stroke();
-    g.beginPath();
-    g.moveTo(20, -72); g.bezierCurveTo(4, -108, -22, -128, -60, -140); g.bezierCurveTo(-38, -108, -12, -90, 40, -70); g.closePath(); g.stroke();
-    for (i = 0; i < 5; i++) {                                           // upper fangs
-      var fx = 92 - i * 15; g.beginPath(); g.moveTo(fx, -22 + i * 3.2); g.lineTo(fx - 4, -6 + i * 4.5); g.lineTo(fx - 9, -20 + i * 3.4); g.stroke();
-    }
-    for (i = 0; i < 4; i++) {                                           // lower fangs
-      var lx = 112 - i * 17; g.beginPath(); g.moveTo(lx, 26 + i * 1.2); g.lineTo(lx - 4, 12 + i * 2.5); g.lineTo(lx - 10, 27 + i * 2.5); g.stroke();
-    }
-    g.beginPath(); g.moveTo(26, -48); g.quadraticCurveTo(46, -62, 70, -46); g.quadraticCurveTo(46, -38, 26, -48); g.closePath(); g.stroke(); // eye
-    g.beginPath(); g.ellipse(48, -48, 3, 6, 0.1, 0, 6.3); g.fill();
-    g.beginPath(); g.arc(112, -38, 3.5, 0, 6.3); g.fill();              // nostril
-    g.beginPath(); g.moveTo(-6, -20); g.bezierCurveTo(10, -30, 20, -26, 28, -18); g.moveTo(-14, -2); g.bezierCurveTo(6, -10, 14, -6, 20, 4); g.stroke(); // scales
+    g.lineWidth = 1.8;
+    g.save();                                   // the swords sit behind the shield: clip it out
+    g.beginPath(); g.rect(-300, -300, 600, 600);
+    g.moveTo(-64, -78); g.lineTo(64, -78); g.lineTo(64, 8); g.quadraticCurveTo(64, 72, 0, 103); g.quadraticCurveTo(-64, 72, -64, 8); g.closePath();
+    g.clip('evenodd');
+    sword(-0.7); sword(0.7);
     g.restore();
+    // a heraldic shield bearing a castle tower
+    g.beginPath();
+    g.moveTo(-62, -76); g.lineTo(62, -76); g.lineTo(62, 8);
+    g.quadraticCurveTo(62, 70, 0, 100); g.quadraticCurveTo(-62, 70, -62, 8); g.closePath();
+    g.lineWidth = 3; g.stroke();
+    g.lineWidth = 1.5;
+    g.beginPath(); g.moveTo(-50, -64); g.lineTo(50, -64); g.lineTo(50, 6); g.quadraticCurveTo(50, 60, 0, 86); g.quadraticCurveTo(-50, 60, -50, 6); g.closePath(); g.stroke();
+    g.lineWidth = 2.6; g.lineJoin = 'miter';
+    g.beginPath();
+    g.moveTo(-18, 44); g.lineTo(-18, -26); g.lineTo(-30, -26); g.lineTo(-30, -44); g.lineTo(-20, -44); g.lineTo(-20, -36); g.lineTo(-8, -36); g.lineTo(-8, -44);
+    g.lineTo(8, -44); g.lineTo(8, -36); g.lineTo(20, -36); g.lineTo(20, -44); g.lineTo(30, -44); g.lineTo(30, -26); g.lineTo(18, -26); g.lineTo(18, 44);
+    g.stroke();                                                         // the tower and its battlements
+    g.beginPath(); g.moveTo(-36, 44); g.lineTo(36, 44); g.stroke();       // the base
+    g.beginPath(); g.moveTo(-8, 44); g.lineTo(-8, 22); g.quadraticCurveTo(0, 6, 8, 22); g.lineTo(8, 44); g.stroke(); // the gate
+    g.lineWidth = 4;
+    g.beginPath(); g.moveTo(0, -20); g.lineTo(0, -4); g.stroke();         // an arrow slit
     g.lineWidth = 1.6;
     var r = rng(3);
     for (i = 0; i < 36; i++) {
