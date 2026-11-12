@@ -154,7 +154,7 @@ window.View3D = (function () {
     camera.updateProjectionMatrix();
     scene.background.set(walk ? p.haze : p.bg);
     scene.fog.color.set(walk ? p.haze : p.bg);
-    scene.fog.near = walk ? 1.5 : 16;
+    scene.fog.near = walk ? 0.5 : 16;
     scene.fog.far = walk ? 6.5 : 46;
     heroLight.intensity = walk ? 1.4 : 1.1;
     ambient.intensity = walk ? 0.45 : 0.6;
