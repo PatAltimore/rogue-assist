@@ -592,6 +592,7 @@ void	init_weapon(THING *weap, int which);
 bool	inventory(THING *list, int type);
 void	invis_on();
 void	killed(THING *tp, bool pr);
+void	assist_note_kill(int y, int x, int type);
 void	kill_daemon(void (*func)());
 bool	lock_sc();
 void	miss(char *er, char *ee, bool noend);

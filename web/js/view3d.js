@@ -27,6 +27,7 @@ window.View3D = (function () {
     view: 'orbit', walk: { yaw: 0, target: 0 }, heroFace: 0
   };
   var T, renderer, scene, camera, stage, canvas;
+  var fx, deaths = [];
   var walls, floors, passes, rocks, ceiling, dynamic, hero, heroLight, fog, ambient, sun;
   var cellWall = [], cellFloor = [], cellPass = [], tapHandler = null;
   var geo = {}, mats = {}, labelCache = {}, anim = [];
@@ -115,6 +116,8 @@ window.View3D = (function () {
     scene.add(ceiling);
     dynamic = new T.Group();
     scene.add(dynamic);
+    fx = new T.Group(); // effects that outlive a map update, such as a monster dying
+    scene.add(fx);
 
     hero = new T.Group();
     var ring = new T.Mesh(new T.RingGeometry(0.42, 0.55, 28), new T.MeshBasicMaterial({ color: 0xffffff, side: T.DoubleSide, transparent: true, opacity: 0.7 }));
@@ -267,6 +270,57 @@ window.View3D = (function () {
   }
 
   // Moving parts of scenery: the arrow over the stairs bounces and spins, trap spikes stab.
+  // A monster dies: a hit flinch, then it topples backwards, shrinks away, and a puff of
+  // dust and sparks fades out where it stood.
+  function death(letter, x, y) {
+    if (!state.ok || !state.visible || state.reduceMotion) return;
+    var g = Models3D.monster(letter), p = pal();
+    var rig = g.getObjectByName('rig') || g;
+    g.position.set(x, 0, y);
+    g.rotation.y = Math.atan2(state.hero.x - x, state.hero.y - y);
+    fx.add(g);
+    var bits = [], i;
+    for (i = 0; i < 14; i++) {
+      var spark = i < 5, a = Math.random() * 6.283, sp = (spark ? 1.4 : 0.7) + Math.random() * 0.9;
+      var b = new T.Mesh(new T.SphereGeometry(spark ? 0.04 : 0.09, 6, 5), new T.MeshBasicMaterial({ color: spark ? p.mon : 0xb8b8c0, transparent: true, opacity: spark ? 1 : 0.6, depthWrite: false }));
+      b.position.set(x, 0.4, y);
+      b.userData = { vx: Math.cos(a) * sp, vz: Math.sin(a) * sp, vy: (spark ? 1.8 : 0.6) + Math.random(), spark: spark };
+      fx.add(b);
+      bits.push(b);
+    }
+    deaths.push({ g: g, rig: rig, bits: bits, t0: performance.now(), flies: !!(g.userData && g.userData.flies) });
+    state.dirty = true;
+  }
+
+  function animateDeaths(now) {
+    for (var i = deaths.length - 1; i >= 0; i--) {
+      var d = deaths[i], t = (now - d.t0) / 1000, k;
+      if (t > 1.3) {
+        fx.remove(d.g);
+        d.bits.forEach(function (b) { fx.remove(b); b.material.dispose(); b.geometry.dispose(); });
+        deaths.splice(i, 1);
+        continue;
+      }
+      // flinch (0 - 0.12), fall (0.12 - 0.6), shrink away (0.6 - 1.2)
+      var fall = Math.min(1, Math.max(0, (t - 0.12) / 0.48));
+      var ease = fall * fall * (3 - 2 * fall);
+      d.rig.rotation.x = t < 0.12 ? -0.35 * (t / 0.12) : -0.35 - 1.2 * ease;
+      d.rig.position.y = d.flies ? -0.6 * ease : 0;
+      d.rig.position.z = -0.12 * ease;
+      k = t < 0.6 ? 1 : Math.max(0, 1 - (t - 0.6) / 0.6);
+      var pop = t < 0.12 ? 1 + 0.12 * (t / 0.12) : 1;
+      d.g.scale.set(k * pop, k * pop, k * pop);
+      d.bits.forEach(function (b) {
+        var u = b.userData, life = Math.max(0, 1 - t / 1.1);
+        b.position.x += u.vx * 0.03; b.position.z += u.vz * 0.03;
+        u.vy -= 0.12; b.position.y = Math.max(0.03, b.position.y + u.vy * 0.03);
+        b.material.opacity = (u.spark ? 1 : 0.6) * life;
+        var sc = u.spark ? life : 1 + t * 1.6;
+        b.scale.set(sc, sc, sc);
+      });
+    }
+  }
+
   function animateProp(obj, x, y) {
     var arrow = obj.getObjectByName('arrow'), spikes = obj.getObjectByName('spikes');
     if (arrow) anim.push({ obj: arrow, base: arrow.position.y, phase: hash(x, y) * 6.28, spin: true, hop: 0.12 });
@@ -486,6 +540,7 @@ window.View3D = (function () {
     state.last = now;
     var moving = applyCamera(dt);
     var t = now / 1000;
+    if (deaths.length) animateDeaths(performance.now());
     if (!state.reduceMotion) {
       for (var i = 0; i < anim.length; i++) {
         var a = anim[i];
@@ -636,6 +691,7 @@ window.View3D = (function () {
     update: update,
     command: command,
     isOk: function () { return state.ok; },
+    death: death,
     setVisible: function (v) { state.visible = !!v; state.dirty = true; if (v) resize(); },
     setTheme: function (t) { state.theme = t === 'retro' ? 'retro' : 'modern'; applyTheme(); },
     setMotion: function (on) { state.reduceMotion = !on; state.dirty = true; },

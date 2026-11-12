@@ -848,7 +848,19 @@
   var view3dOpen = store.get('rogue-3d', '1') === '1';
 
   var terr = {}, terrLevel = -1;
+  var seenKills = 0;
+  function checkKills() {
+    var n = call('kill_count');
+    if (n < seenKills) seenKills = 0;
+    var live = view3dActive() && window.View3D && View3D.isOk();
+    for (var i = Math.max(seenKills, n - 8); live && i < n; i++) {
+      View3D.death(String.fromCharCode(call('kill_type', i)), call('kill_x', i), call('kill_y', i));
+    }
+    seenKills = n;
+  }
+
   function update3d(s) {
+    checkKills();
     if (!view3dActive() || !window.View3D || !View3D.isOk()) return;
     var grid = [];
     for (var y = 0; y < ROWS; y++) {

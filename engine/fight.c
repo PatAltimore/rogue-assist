@@ -630,6 +630,7 @@ killed(THING *tp, bool pr)
 {
     char *mname;
 
+    assist_note_kill(tp->t_pos.y, tp->t_pos.x, tp->t_type);
     pstats.s_exp += tp->t_stats.s_exp;
 
     /*

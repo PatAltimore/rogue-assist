@@ -25,6 +25,22 @@ static int cheated;
 int assist_at_command;          /* 1 while waiting at the top-level command prompt */
 extern int shim_overlay;        /* 1 while a window other than stdscr is on screen */
 
+/* ---- kills: the page plays a death animation for each ------------------- */
+
+static int kill_total, kill_y[8], kill_x[8], kill_type[8];
+
+void assist_note_kill(int y, int x, int type)
+{
+    int i = kill_total & 7;
+    kill_y[i] = y; kill_x[i] = x; kill_type[i] = type;
+    kill_total++;
+}
+
+EMSCRIPTEN_KEEPALIVE int assist_kill_count(void) { return kill_total; }
+EMSCRIPTEN_KEEPALIVE int assist_kill_y(int i) { return kill_y[i & 7]; }
+EMSCRIPTEN_KEEPALIVE int assist_kill_x(int i) { return kill_x[i & 7]; }
+EMSCRIPTEN_KEEPALIVE int assist_kill_type(int i) { return kill_type[i & 7]; }
+
 /* ---- stats ---------------------------------------------------------- */
 
 EMSCRIPTEN_KEEPALIVE int assist_at_prompt(void) { return assist_at_command; }
