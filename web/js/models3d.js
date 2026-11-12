@@ -23,11 +23,45 @@ window.Models3D = (function () {
     return new T.Color(0.06 + 0.2 * l, 0.25 + 0.75 * l, 0.1 + 0.25 * l).getHex();
   }
 
+  // Cel shading: light falls into three flat bands instead of a smooth gradient, and
+  // every model gets a dark outline (a slightly enlarged black copy drawn inside out).
+  var gradient = null, hullMat = null;
+  function toonGradient() {
+    if (!gradient) {
+      gradient = new T.DataTexture(new Uint8Array([88, 168, 255]), 3, 1, T.LuminanceFormat);
+      gradient.minFilter = gradient.magFilter = T.NearestFilter;
+      gradient.needsUpdate = true;
+    }
+    return gradient;
+  }
+
+  function toon(params) {
+    params.gradientMap = toonGradient();
+    return new T.MeshToonMaterial(params);
+  }
+
+  function outlineAll(g) {
+    if (!hullMat) hullMat = new T.MeshBasicMaterial({ color: 0x05060c, side: T.BackSide });
+    var meshes = [];
+    g.traverse(function (o) {
+      if (!o.isMesh || o.isInstancedMesh || o.name === 'shadow' || o.name === 'hull') return;
+      var mt = o.material;
+      if (!mt || mt.transparent || mt.blending === T.AdditiveBlending || o.geometry.type === 'BufferGeometry') return;
+      meshes.push(o);
+    });
+    meshes.forEach(function (o) {
+      var h = new T.Mesh(o.geometry, hullMat);
+      h.name = 'hull';
+      h.scale.set(1.09, 1.09, 1.09);
+      o.add(h);
+    });
+  }
+
   function mat(color, o) {
     var key = color + '|' + (o.e || 0) + '|' + (o.a === undefined ? 1 : o.a) + '|' + (o.t || '');
     if (!matCache[key]) {
-      matCache[key] = new T.MeshLambertMaterial({
-        color: tone(color), emissive: tone(o.e || 0), flatShading: !(o.t && MONTEX[o.t]),
+      matCache[key] = new T.MeshToonMaterial({
+        color: tone(color), emissive: tone(o.e || 0), gradientMap: toonGradient(),
         transparent: o.a !== undefined && o.a < 1, opacity: o.a === undefined ? 1 : o.a,
         side: o.dbl ? T.DoubleSide : T.FrontSide, map: o.t ? texture(o.t) : null
       });
@@ -811,6 +845,7 @@ window.Models3D = (function () {
       rig.name = 'rig';
       g.children.slice().forEach(function (ch) { if (ch.name !== 'shadow') rig.add(ch); });
       g.add(rig);
+      outlineAll(g);
       protoCache[key] = g;
     }
     return protoCache[key].clone();
@@ -878,6 +913,7 @@ window.Models3D = (function () {
         default: return null;
       }
       shadow(g, 0.28);
+      outlineAll(g);
       protoCache[key] = g;
     }
     return protoCache[key].clone();
@@ -896,6 +932,7 @@ window.Models3D = (function () {
       if (!horizontal) g.rotation.y = Math.PI / 2;
       var wrap = new T.Group();
       wrap.add(g);
+      outlineAll(g);
       protoCache[key] = wrap;
     }
     return protoCache[key].clone();
@@ -916,6 +953,7 @@ window.Models3D = (function () {
         add(g, geo('b', 0.07, 0.07, 0.82), 0xb8a468, { p: [s * 0.38, 0.62, -0.02] });
       });
       add(g, geo('k', 0.1, 0.22), 0xffe680, { p: [0, 0.95, 0.1], r: [Math.PI, 0, 0], e: 0x806a20, n: 'arrow' });
+      outlineAll(g);
       protoCache.stairs = g;
     }
     return protoCache.stairs.clone();
@@ -930,6 +968,7 @@ window.Models3D = (function () {
         add(spikes, geo('k', 0.045, 0.28 - (i % 2) * 0.06), 0xd8dde6, { p: [s[0], 0.17, s[1]], e: 0x303438 });
       });
       add(g, geo('t', 0.34, 0.02), 0xff6b4a, { p: [0, 0.06, 0], r: [Math.PI / 2, 0, 0], e: 0xc03a20 });
+      outlineAll(g);
       protoCache.trap = g;
     }
     return protoCache.trap.clone();
@@ -943,8 +982,9 @@ window.Models3D = (function () {
     add(g, geo('b', 0.05, 0.5, 0.012), 0xdfe6f0, { p: [0.3, 0.72, 0.18], r: [-0.4, 0, 0], e: 0x30343a });
     add(g, geo('b', 0.14, 0.03, 0.04), 0xc9a45a, { p: [0.3, 0.5, 0.1], r: [-0.4, 0, 0] });
     g.userData.h = 1.3;
+    outlineAll(g);
     return g;
   }
 
-  return { init: init, texture: texture, hero: hero, setTheme: setTheme, monster: monster, item: item, door: door, stairs: stairs, trap: trap };
+  return { toon: toon, outlineAll: outlineAll, init: init, texture: texture, hero: hero, setTheme: setTheme, monster: monster, item: item, door: door, stairs: stairs, trap: trap };
 })();

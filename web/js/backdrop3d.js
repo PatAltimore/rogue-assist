@@ -245,9 +245,9 @@ window.Backdrop3D = (function () {
     });
 
     // floating rubble, a few carrying torches
-    var rockMat = new T.MeshLambertMaterial({ color: p.rock, flatShading: true, fog: false });
-    var deepMat = new T.MeshLambertMaterial({ color: p.deep, flatShading: true, fog: false });
-    var woodMat = new T.MeshLambertMaterial({ color: 0x5a3a1c, fog: false });
+    var rockMat = new T.MeshToonMaterial({ color: p.rock, gradientMap: Models3D.toon({}).gradientMap, fog: false });
+    var deepMat = new T.MeshToonMaterial({ color: p.deep, gradientMap: Models3D.toon({}).gradientMap, fog: false });
+    var woodMat = new T.MeshToonMaterial({ color: 0x5a3a1c, gradientMap: Models3D.toon({}).gradientMap, fog: false });
     var flameMat = new T.MeshBasicMaterial({ color: p.flame, fog: false });
     for (i = 0; i < 26; i++) {
       var side = r() < 0.5 ? -1 : 1;

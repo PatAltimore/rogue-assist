@@ -27,7 +27,7 @@ window.View3D = (function () {
     view: 'orbit', walk: { yaw: 0, target: 0 }, heroFace: 0
   };
   var T, renderer, scene, camera, stage, canvas;
-  var fx, deaths = [];
+  var fx, deaths = [], wallHull;
   var walls, floors, passes, rocks, ceiling, dynamic, hero, heroLight, fog, ambient, sun;
   var cellWall = [], cellFloor = [], cellPass = [], tapHandler = null;
   var geo = {}, mats = {}, labelCache = {}, anim = [];
@@ -85,9 +85,9 @@ window.View3D = (function () {
 
   function buildShared() {
     geo.box = new T.BoxGeometry(1, 1, 1);
-    mats.wall = new T.MeshLambertMaterial({ color: 0xffffff });
-    mats.floor = new T.MeshLambertMaterial({ color: 0xffffff });
-    mats.pass = new T.MeshLambertMaterial({ color: 0xffffff });
+    mats.wall = Models3D.toon({ color: 0xffffff });
+    mats.floor = Models3D.toon({ color: 0xffffff });
+    mats.pass = Models3D.toon({ color: 0xffffff });
     mats.wall.map = Models3D.texture('stone');
     mats.floor.map = Models3D.texture('flag');
     mats.pass.map = Models3D.texture('dirt');
@@ -102,8 +102,25 @@ window.View3D = (function () {
       m.setColorAt(0, new T.Color(0xffffff));
       scene.add(m);
     });
+    // Cel-shaded outline for the walls: an enlarged black copy drawn inside out (overhead view only).
+    wallHull = new T.InstancedMesh(geo.box, new T.ShaderMaterial({
+      side: T.BackSide,
+      vertexShader: [
+        'void main() {',
+        '  vec4 p = vec4(position * 1.05, 1.0);',
+        '#ifdef USE_INSTANCING',
+        '  p = instanceMatrix * p;',
+        '#endif',
+        '  gl_Position = projectionMatrix * modelViewMatrix * p;',
+        '}'
+      ].join('\n'),
+      fragmentShader: 'void main() { gl_FragColor = vec4(0.02, 0.02, 0.04, 1.0); }'
+    }), MAX_CELLS);
+    wallHull.instanceMatrix = walls.instanceMatrix;
+    wallHull.frustumCulled = false;
+    scene.add(wallHull);
     // Walk view only: rock walls along corridors, and a ceiling.
-    rocks = new T.InstancedMesh(geo.box, new T.MeshLambertMaterial({ color: 0xffffff, map: Models3D.texture('stone') }), 4 * MAX_CELLS);
+    rocks = new T.InstancedMesh(geo.box, Models3D.toon({ color: 0xffffff, map: Models3D.texture('stone') }), 4 * MAX_CELLS);
     rocks.instanceMatrix.setUsage(T.DynamicDrawUsage);
     rocks.frustumCulled = false;
     rocks.setColorAt(0, new T.Color(0xffffff));
@@ -154,6 +171,7 @@ window.View3D = (function () {
     hero.visible = !walk;
     ceiling.visible = walk;
     rocks.visible = walk;
+    wallHull.visible = !walk;
     camera.fov = walk ? 75 : 45;
     camera.near = walk ? 0.05 : 0.1;
     camera.updateProjectionMatrix();
@@ -231,7 +249,7 @@ window.View3D = (function () {
 
   function mesh(g, color, opts) {
     opts = opts || {};
-    var m = new T.Mesh(g, new T.MeshLambertMaterial({ color: color, emissive: opts.emissive || 0x000000 }));
+    var m = new T.Mesh(g, Models3D.toon({ color: color, emissive: opts.emissive || 0x000000 }));
     m.userData.own = true;
     return m;
   }
@@ -528,6 +546,7 @@ window.View3D = (function () {
     if (rocks.instanceColor) rocks.instanceColor.needsUpdate = true;
     [[walls, nW], [floors, nF], [passes, nP]].forEach(function (pair) {
       pair[0].count = pair[1];
+      if (pair[0] === walls) wallHull.count = pair[1];
       pair[0].instanceMatrix.needsUpdate = true;
       if (pair[0].instanceColor) pair[0].instanceColor.needsUpdate = true;
     });
