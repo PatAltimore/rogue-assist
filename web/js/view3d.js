@@ -9,12 +9,12 @@ window.View3D = (function () {
 
   var PALETTES = {
     modern: {
-      bg: 0x0b0c10, wall: 0x7a8296, wallTop: 0x9aa3b8, floor: 0x2f3547, pass: 0x6a604f, door: 0xd79b4a,
+      haze: 0x151b2e, mist: 0x39466e, bg: 0x0b0c10, wall: 0x7a8296, wallTop: 0x9aa3b8, floor: 0x2f3547, pass: 0x6a604f, door: 0xd79b4a,
       stairs: 0xffd166, gold: 0xf4d03f, potion: 0x4fd1c5, scroll: 0xf1ead2, food: 0xa6e36e, weapon: 0xc9d1de,
       armor: 0x7f9cc4, magic: 0xb690ff, trap: 0xff6b4a, mon: 0xff5d5d, hero: 0xffffff, frontier: 0xe3aa4c
     },
     retro: {
-      bg: 0x020502, wall: 0x2faa4a, wallTop: 0x4cff6e, floor: 0x0b2a12, pass: 0x17602a, door: 0x4cff6e,
+      haze: 0x06240e, mist: 0x187030, bg: 0x020502, wall: 0x2faa4a, wallTop: 0x4cff6e, floor: 0x0b2a12, pass: 0x17602a, door: 0x4cff6e,
       stairs: 0xb6ffc4, gold: 0x4cff6e, potion: 0x4cff6e, scroll: 0x4cff6e, food: 0x4cff6e, weapon: 0x4cff6e,
       armor: 0x4cff6e, magic: 0x4cff6e, trap: 0xb6ffc4, mon: 0xb6ffc4, hero: 0xffffff, frontier: 0xb6ffc4
     }
@@ -145,13 +145,15 @@ window.View3D = (function () {
   // Orbit: the overhead camera. Walk: first person at eye height.
   function applyView() {
     if (!scene) return;
-    var walk = state.view === 'walk';
+    var walk = state.view === 'walk', p = pal();
     hero.visible = !walk;
     ceiling.visible = walk;
     rocks.visible = walk;
     camera.fov = walk ? 75 : 45;
     camera.near = walk ? 0.05 : 0.1;
     camera.updateProjectionMatrix();
+    scene.background.set(walk ? p.haze : p.bg);
+    scene.fog.color.set(walk ? p.haze : p.bg);
     scene.fog.near = walk ? 1.0 : 16;
     scene.fog.far = walk ? 7 : 46;
     heroLight.intensity = walk ? 1.4 : 1.1;
@@ -216,12 +218,59 @@ window.View3D = (function () {
     return m;
   }
 
-  // A panel the colour of the fog, standing across an unexplored way on, so that
-  // the far end fades into darkness and nothing beyond it shows through.
+  // Unexplored ground ends in a faint drifting haze rather than a black wall: a panel the
+  // colour of the fog stops anything showing through, and slow glowing mist floats in front of it.
+  var veilKit = null;
+  function mistTexture() {
+    var S = 128, c = document.createElement('canvas');
+    c.width = c.height = S;
+    var g = c.getContext('2d'), i;
+    g.clearRect(0, 0, S, S);
+    for (i = 0; i < 26; i++) {
+      var x = (i * 53 % 100) / 100 * S, y = (i * 37 % 100) / 100 * S, r = 22 + (i * 17 % 30);
+      [-S, 0, S].forEach(function (dx) {
+        var gr = g.createRadialGradient(x + dx, y, 0, x + dx, y, r);
+        gr.addColorStop(0, 'rgba(255,255,255,0.28)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
+        g.fillStyle = gr; g.fillRect(0, 0, S, S);
+      });
+    }
+    var t = new T.CanvasTexture(c);
+    t.wrapS = t.wrapT = T.RepeatWrapping;
+    t.repeat.set(1.5, 1);
+    return t;
+  }
+
+  // A round soft-edged mask so the mist panels have no visible rectangle.
+  function softEdge() {
+    var S = 64, c = document.createElement('canvas');
+    c.width = c.height = S;
+    var g = c.getContext('2d'), gr = g.createRadialGradient(S / 2, S / 2, 0, S / 2, S / 2, S / 2);
+    gr.addColorStop(0, '#fff'); gr.addColorStop(0.45, '#aaa'); gr.addColorStop(1, '#000');
+    g.fillStyle = gr; g.fillRect(0, 0, S, S);
+    return new T.CanvasTexture(c);
+  }
+
   function veil(x, y, dx, dy) {
-    var m = new T.Mesh(new T.BoxGeometry(dx ? 0.2 : 3.4, 4, dy ? 0.2 : 3.4), new T.MeshBasicMaterial({ color: pal().bg }));
-    m.userData.own = true;
-    addAt(m, x + dx * 1.6, 1.2, y + dy * 1.6, 0);
+    var p = pal();
+    if (!veilKit || veilKit.theme !== state.theme) {
+      var tex = mistTexture();
+      veilKit = {
+        theme: state.theme, tex: tex,
+        box: new T.MeshBasicMaterial({ color: p.haze }),
+        mist: new T.MeshBasicMaterial({ color: p.mist, map: tex, alphaMap: softEdge(), transparent: true, opacity: 0.6, depthWrite: false, blending: T.AdditiveBlending, side: T.DoubleSide }),
+        boxGeo: [new T.BoxGeometry(0.2, 4, 3.4), new T.BoxGeometry(3.4, 4, 0.2)],
+        plane: new T.PlaneGeometry(3.4, 2.4)
+      };
+    }
+    var grp = new T.Group();
+    grp.add(new T.Mesh(veilKit.boxGeo[dx ? 0 : 1], veilKit.box));
+    [0.35, 0.7].forEach(function (back, k) {
+      var pl = new T.Mesh(veilKit.plane, veilKit.mist);
+      pl.position.set(-dx * back, -0.1 + k * 0.2, -dy * back);
+      if (dx) pl.rotation.y = Math.PI / 2;
+      grp.add(pl);
+    });
+    addAt(grp, x + dx * 1.6, 1.0, y + dy * 1.6, 0);
   }
 
   function addAt(obj, x, y, z, bob) {
@@ -465,6 +514,7 @@ window.View3D = (function () {
           if (a.spin) a.obj.rotation.y = t * 1.8 + a.phase;
         }
       }
+      if (veilKit) { veilKit.tex.offset.x = t * 0.012; veilKit.tex.offset.y = Math.sin(t * 0.3) * 0.05; veilKit.mist.opacity = 0.5 + Math.sin(t * 0.9) * 0.15; }
       var pulse = 1 + Math.sin(t * 4) * 0.12;
       for (var j = 0; j < frontierMeshes.length; j++) frontierMeshes[j].scale.set(pulse, pulse, pulse);
       hero.userData.ring.scale.set(pulse, pulse, pulse);
