@@ -177,6 +177,11 @@ window.View3D = (function () {
     mesh.setColorAt(i, tmpM.c);
   }
 
+  // A colour part of the way towards the haze colour.
+  function toHaze(color, k, p) {
+    return new T.Color(color).lerp(new T.Color(p.haze), k).getHex();
+  }
+
   function shade(color, k) {
     var c = new T.Color(color);
     c.multiplyScalar(k);
@@ -245,12 +250,12 @@ window.View3D = (function () {
     var S = 64, c = document.createElement('canvas');
     c.width = c.height = S;
     var g = c.getContext('2d'), gr = g.createRadialGradient(S / 2, S / 2, 0, S / 2, S / 2, S / 2);
-    gr.addColorStop(0, '#fff'); gr.addColorStop(0.45, '#aaa'); gr.addColorStop(1, '#000');
+    gr.addColorStop(0, '#fff'); gr.addColorStop(0.35, '#777'); gr.addColorStop(0.75, '#111'); gr.addColorStop(1, '#000');
     g.fillStyle = gr; g.fillRect(0, 0, S, S);
     return new T.CanvasTexture(c);
   }
 
-  function veil(x, y, dx, dy) {
+  function veil(x, y, dx, dy, dist) {
     var p = pal();
     if (!veilKit || veilKit.theme !== state.theme) {
       var tex = mistTexture(), tex2 = tex.clone();
@@ -262,7 +267,7 @@ window.View3D = (function () {
         mist: new T.MeshBasicMaterial({ color: p.mist, map: tex, alphaMap: softEdge(), transparent: true, opacity: 0.6, fog: false, depthWrite: false, blending: T.AdditiveBlending, side: T.DoubleSide }),
         boxGeo: [new T.BoxGeometry(0.2, 4, 3.4), new T.BoxGeometry(3.4, 4, 0.2)],
         mist2: new T.MeshBasicMaterial({ color: p.mist, map: tex2, alphaMap: softEdge(), transparent: true, opacity: 0.6, fog: false, depthWrite: false, blending: T.AdditiveBlending, side: T.DoubleSide }),
-        plane: new T.PlaneGeometry(3.4, 2.4)
+        plane: new T.PlaneGeometry(1.7, 2.0)
       };
     }
     var grp = new T.Group();
@@ -273,7 +278,7 @@ window.View3D = (function () {
       if (dx) pl.rotation.y = Math.PI / 2;
       grp.add(pl);
     });
-    addAt(grp, x + dx * 1.6, 1.0, y + dy * 1.6, 0);
+    addAt(grp, x + dx * (dist || 1.6), 1.0, y + dy * (dist || 1.6), 0);
   }
 
   function addAt(obj, x, y, z, bob) {
@@ -391,7 +396,20 @@ window.View3D = (function () {
             [[1, 0], [-1, 0], [0, 1], [0, -1]].forEach(function (d) {
               var ny = y + d[1], nx = x + d[0];
               if (ny < 1 || ny > ROWS - 2 || nx < 0 || nx >= COLS || data.grid[ny][nx]) return;
-              if (links === 1 && known(y - d[1], x - d[0])) { veil(x, y, d[0], d[1]); return; }
+              if (links === 1 && known(y - d[1], x - d[0])) {
+                // The explored end: carry on a few squares that sink into the haze, then the veil.
+                place(passes, nP - 1, x, -0.04, y, 0.94, 0.1, 0.94, toHaze(shade(p.pass, v), 0.2, p));
+                for (var gi = 1; gi <= 3; gi++) {
+                  var k = gi / 3.3, gx = x + d[0] * gi, gy = y + d[1] * gi;
+                  cellPass[nP] = undefined;
+                  place(passes, nP++, gx, -0.04, gy, 0.94, 0.1, 0.94, toHaze(shade(p.pass, 0.9), k, p));
+                  [-1, 1].forEach(function (sd) {
+                    place(rocks, nR++, gx - d[1] * sd * 0.5, 0.65, gy + d[0] * sd * 0.5, d[0] ? 1.14 : 0.14, 1.3, d[1] ? 1.14 : 0.14, toHaze(shade(p.wall, 0.65), k, p));
+                  });
+                }
+                veil(x, y, d[0], d[1], 3.6);
+                return;
+              }
               place(rocks, nR++, x + d[0] * 0.5, 0.65, y + d[1] * 0.5, d[0] ? 0.14 : 1.14, 1.3, d[1] ? 0.14 : 1.14, shade(p.wall, 0.6 + 0.2 * hash(x + nR, y)));
             });
           }
