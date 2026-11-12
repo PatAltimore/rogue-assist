@@ -86,6 +86,9 @@ window.View3D = (function () {
     mats.wall = new T.MeshLambertMaterial({ color: 0xffffff });
     mats.floor = new T.MeshLambertMaterial({ color: 0xffffff });
     mats.pass = new T.MeshLambertMaterial({ color: 0xffffff });
+    mats.wall.map = Models3D.texture('stone');
+    mats.floor.map = Models3D.texture('flag');
+    mats.pass.map = Models3D.texture('dirt');
     walls = new T.InstancedMesh(geo.box, mats.wall, MAX_CELLS);
     floors = new T.InstancedMesh(geo.box, mats.floor, MAX_CELLS);
     passes = new T.InstancedMesh(geo.box, mats.pass, MAX_CELLS);
@@ -98,14 +101,14 @@ window.View3D = (function () {
       scene.add(m);
     });
     // Walk view only: rock walls along corridors, and a ceiling.
-    rocks = new T.InstancedMesh(geo.box, new T.MeshLambertMaterial({ color: 0xffffff }), 4 * MAX_CELLS);
+    rocks = new T.InstancedMesh(geo.box, new T.MeshLambertMaterial({ color: 0xffffff, map: Models3D.texture('rock') }), 4 * MAX_CELLS);
     rocks.instanceMatrix.setUsage(T.DynamicDrawUsage);
     rocks.frustumCulled = false;
     rocks.setColorAt(0, new T.Color(0xffffff));
     rocks.visible = false;
     rocks.count = 0;
     scene.add(rocks);
-    ceiling = new T.Mesh(new T.PlaneGeometry(COLS + 4, ROWS + 4), new T.MeshBasicMaterial({ color: 0x101218 }));
+    ceiling = new T.Mesh(new T.PlaneGeometry(COLS + 4, ROWS + 4), new T.MeshBasicMaterial({ color: 0x101218, map: Models3D.texture('ceil', COLS + 4, ROWS + 4) }));
     ceiling.rotation.x = Math.PI / 2;
     ceiling.position.set(COLS / 2, 1.32, ROWS / 2);
     ceiling.visible = false;

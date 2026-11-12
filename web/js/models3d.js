@@ -24,16 +24,120 @@ window.Models3D = (function () {
   }
 
   function mat(color, o) {
-    var key = color + '|' + (o.e || 0) + '|' + (o.a === undefined ? 1 : o.a);
+    var key = color + '|' + (o.e || 0) + '|' + (o.a === undefined ? 1 : o.a) + '|' + (o.t || '');
     if (!matCache[key]) {
       matCache[key] = new T.MeshLambertMaterial({
         color: tone(color), emissive: tone(o.e || 0), flatShading: true,
         transparent: o.a !== undefined && o.a < 1, opacity: o.a === undefined ? 1 : o.a,
-        side: o.dbl ? T.DoubleSide : T.FrontSide
+        side: o.dbl ? T.DoubleSide : T.FrontSide, map: o.t ? texture(o.t) : null
       });
       if (!o.e) matCache[key].emissive.set(0x000000);
     }
     return matCache[key];
+  }
+
+
+  // ---------------------------------------------------------------- textures
+  // Grayscale, drawn on a canvas, so the palette colours (and the Retro green) tint them.
+  var texCache = {};
+
+  function rng(seed) {
+    var a = seed >>> 0;
+    return function () {
+      a = (a + 0x6D2B79F5) >>> 0;
+      var t = a;
+      t = Math.imul(t ^ (t >>> 15), t | 1);
+      t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+  function grey(v) { v = Math.max(0, Math.min(255, Math.round(v))); return 'rgb(' + v + ',' + v + ',' + v + ')'; }
+
+  // Fine grain over everything already drawn.
+  function grain(ctx, size, amount, rand) {
+    var img = ctx.getImageData(0, 0, size, size), d = img.data;
+    for (var i = 0; i < d.length; i += 4) {
+      var n = (rand() - 0.5) * amount;
+      d[i] += n; d[i + 1] += n; d[i + 2] += n;
+    }
+    ctx.putImageData(img, 0, 0);
+  }
+
+  function drawTexture(kind) {
+    var S = 128, c = document.createElement('canvas');
+    c.width = c.height = S;
+    var g = c.getContext('2d'), r = rng(kind.length * 97 + kind.charCodeAt(0)), i, x, y;
+    if (kind === 'stone') { // brick courses
+      g.fillStyle = grey(95); g.fillRect(0, 0, S, S);
+      for (y = 0; y < 4; y++) {
+        for (x = -(y % 2) * 32; x < S; x += 64) {
+          var v = 175 + r() * 60;
+          g.fillStyle = grey(v); g.fillRect(x + 2, y * 32 + 2, 60, 28);
+          g.fillStyle = grey(v + 28); g.fillRect(x + 2, y * 32 + 2, 60, 2);
+          g.fillStyle = grey(v - 34); g.fillRect(x + 2, y * 32 + 28, 60, 2);
+          for (i = 0; i < 5; i++) { g.fillStyle = grey(v - 20 + r() * 40); g.fillRect(x + 4 + r() * 52, y * 32 + 5 + r() * 20, 2 + r() * 6, 2 + r() * 4); }
+        }
+      }
+      grain(g, S, 30, r);
+    } else if (kind === 'flag') { // flagstones with cracks
+      g.fillStyle = grey(90); g.fillRect(0, 0, S, S);
+      var cuts = [[0, 0, 70, 58], [70, 0, 58, 70], [0, 58, 52, 70], [52, 70, 76, 58], [52, 58, 18, 12]];
+      cuts.forEach(function (s) {
+        var v2 = 190 + r() * 45;
+        g.fillStyle = grey(v2); g.fillRect(s[0] + 2, s[1] + 2, s[2] - 4, s[3] - 4);
+        g.fillStyle = grey(v2 + 22); g.fillRect(s[0] + 2, s[1] + 2, s[2] - 4, 2);
+        for (i = 0; i < 4; i++) { g.fillStyle = grey(v2 - 25 + r() * 20); g.fillRect(s[0] + 6 + r() * (s[2] - 16), s[1] + 6 + r() * (s[3] - 16), 3 + r() * 8, 1 + r() * 2); }
+      });
+      g.strokeStyle = 'rgba(40,40,40,0.55)'; g.lineWidth = 1.2;
+      g.beginPath(); g.moveTo(18, 14); g.lineTo(32, 30); g.lineTo(30, 46); g.moveTo(96, 90); g.lineTo(106, 104); g.lineTo(118, 108); g.stroke();
+      grain(g, S, 26, r);
+    } else if (kind === 'dirt') { // packed earth and pebbles
+      g.fillStyle = grey(175); g.fillRect(0, 0, S, S);
+      for (i = 0; i < 90; i++) { g.fillStyle = grey(120 + r() * 110); g.beginPath(); g.ellipse(r() * S, r() * S, 1 + r() * 4, 1 + r() * 3, r() * 3, 0, 6.3); g.fill(); }
+      for (i = 0; i < 40; i++) { g.fillStyle = 'rgba(60,50,40,0.25)'; g.fillRect(r() * S, r() * S, 6 + r() * 14, 1 + r() * 2); }
+      grain(g, S, 44, r);
+    } else if (kind === 'wood') { // vertical planks with grain and nails
+      for (x = 0; x < 4; x++) {
+        var w = 150 + r() * 60;
+        g.fillStyle = grey(w); g.fillRect(x * 32, 0, 32, S);
+        for (i = 0; i < 9; i++) {
+          g.strokeStyle = 'rgba(40,25,10,' + (0.12 + r() * 0.22) + ')'; g.lineWidth = 1 + r();
+          var gx = x * 32 + 3 + r() * 26;
+          g.beginPath(); g.moveTo(gx, 0);
+          for (y = 16; y <= S; y += 16) g.lineTo(gx + (r() - 0.5) * 5, y);
+          g.stroke();
+        }
+        g.fillStyle = 'rgba(30,18,8,0.55)'; g.fillRect(x * 32, 0, 2, S);
+        g.fillStyle = grey(70); g.beginPath(); g.arc(x * 32 + 16, 9, 2.2, 0, 6.3); g.arc(x * 32 + 16, S - 9, 2.2, 0, 6.3); g.fill();
+      }
+      g.fillStyle = 'rgba(25,15,8,0.5)'; g.fillRect(0, 30, S, 5); g.fillRect(0, 92, S, 5); // cross braces
+      grain(g, S, 22, r);
+    } else if (kind === 'rock') { // rough cave wall
+      g.fillStyle = grey(150); g.fillRect(0, 0, S, S);
+      for (i = 0; i < 160; i++) { g.fillStyle = 'rgba(' + (r() < 0.5 ? '255,255,255' : '0,0,0') + ',' + (0.06 + r() * 0.16) + ')'; g.beginPath(); g.ellipse(r() * S, r() * S, 4 + r() * 16, 3 + r() * 12, r() * 3, 0, 6.3); g.fill(); }
+      grain(g, S, 52, r);
+    } else { // 'ceil': dark slabs
+      g.fillStyle = grey(110); g.fillRect(0, 0, S, S);
+      for (y = 0; y < 2; y++) for (x = 0; x < 2; x++) { g.fillStyle = grey(150 + r() * 70); g.fillRect(x * 64 + 2, y * 64 + 2, 60, 60); }
+      grain(g, S, 34, r);
+    }
+    return c;
+  }
+
+  // A shared canvas texture; with repeat counts you get a copy that tiles that often.
+  function texture(kind, rx, ry) {
+    if (!texCache[kind]) {
+      var t = new T.CanvasTexture(drawTexture(kind));
+      t.wrapS = t.wrapT = T.RepeatWrapping;
+      t.anisotropy = 4;
+      texCache[kind] = t;
+    }
+    if (!rx) return texCache[kind];
+    var copy = texCache[kind].clone();
+    copy.needsUpdate = true;
+    copy.repeat.set(rx, ry || rx);
+    return copy;
   }
 
   function geo(kind, a, b, c) {
@@ -538,9 +642,9 @@ window.Models3D = (function () {
     var key = 'door' + (horizontal ? 'h' : 'v');
     if (!protoCache[key]) {
       var g = new T.Group();
-      add(g, geo('b', 0.8, 1.0, 0.16), 0x9a6a36, { p: [0, 0.5, 0], e: 0x1a1008 });
-      [-1, 1].forEach(function (s) { add(g, geo('b', 0.12, 1.3, 0.24), 0x5a3a1a, { p: [s * 0.46, 0.65, 0] }); });
-      add(g, geo('b', 1.04, 0.16, 0.24), 0x5a3a1a, { p: [0, 1.22, 0] });
+      add(g, geo('b', 0.8, 1.0, 0.16), 0xd0a064, { p: [0, 0.5, 0], e: 0x1a1008, t: 'wood' });
+      [-1, 1].forEach(function (s) { add(g, geo('b', 0.12, 1.3, 0.24), 0x8a5a2a, { p: [s * 0.46, 0.65, 0], t: 'wood' }); });
+      add(g, geo('b', 1.04, 0.16, 0.24), 0x8a5a2a, { p: [0, 1.22, 0], t: 'wood' });
       add(g, geo('s', 0.045), 0xf0c84a, { p: [0.26, 0.5, 0.1], e: 0x6a5410 });
       add(g, geo('b', 0.8, 0.04, 0.18), 0x3a2a14, { p: [0, 0.32, 0] });
       add(g, geo('b', 0.8, 0.04, 0.18), 0x3a2a14, { p: [0, 0.72, 0] });
@@ -597,5 +701,5 @@ window.Models3D = (function () {
     return g;
   }
 
-  return { init: init, hero: hero, setTheme: setTheme, monster: monster, item: item, door: door, stairs: stairs, trap: trap };
+  return { init: init, texture: texture, hero: hero, setTheme: setTheme, monster: monster, item: item, door: door, stairs: stairs, trap: trap };
 })();
