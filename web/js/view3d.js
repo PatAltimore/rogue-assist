@@ -149,8 +149,8 @@ window.View3D = (function () {
     camera.fov = walk ? 75 : 45;
     camera.near = walk ? 0.05 : 0.1;
     camera.updateProjectionMatrix();
-    scene.fog.near = walk ? 2.5 : 16;
-    scene.fog.far = walk ? 13 : 46;
+    scene.fog.near = walk ? 1.5 : 16;
+    scene.fog.far = walk ? 8.5 : 46;
     heroLight.intensity = walk ? 1.4 : 1.1;
     ambient.intensity = walk ? 0.45 : 0.6;
     sun.intensity = walk ? 0.3 : 0.65;
@@ -266,6 +266,10 @@ window.View3D = (function () {
             [[1, 0], [-1, 0], [0, 1], [0, -1]].forEach(function (d) {
               var ny = y + d[1], nx = x + d[0];
               if (ny < 1 || ny > ROWS - 2 || nx < 0 || nx >= COLS || data.grid[ny][nx]) return;
+              // The map only holds what has been seen, so a blank square straight ahead of a
+              // known corridor square is probably just unexplored: leave it open to fade to black.
+              var by = y - d[1], bx = x - d[0], back = by >= 1 && by <= ROWS - 2 && bx >= 0 && bx < COLS ? data.grid[by][bx] : 0;
+              if (back && back !== 124 && back !== 45) return; // 124 is |, 45 is -
               place(rocks, nR++, x + d[0] * 0.5, 0.65, y + d[1] * 0.5, d[0] ? 0.14 : 1, 1.3, d[1] ? 0.14 : 1, shade(p.wall, 0.55 + 0.2 * hash(x + nR, y)));
             });
           }
