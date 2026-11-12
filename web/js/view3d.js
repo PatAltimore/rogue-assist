@@ -399,15 +399,22 @@ window.View3D = (function () {
               if (links === 1 && known(y - d[1], x - d[0])) {
                 // The explored end: carry on a few squares that sink into the haze, then the veil.
                 place(passes, nP - 1, x, -0.04, y, 0.94, 0.1, 0.94, toHaze(shade(p.pass, v), 0.2, p));
-                for (var gi = 1; gi <= 3; gi++) {
-                  var k = gi / 3.3, gx = x + d[0] * gi, gy = y + d[1] * gi;
+                // ...but stop short of anything already on the map (a room wall, another corridor).
+                var room = 0;
+                while (room < 3) {
+                  var ry = y + d[1] * (room + 1), rx = x + d[0] * (room + 1);
+                  if (ry < 1 || ry > ROWS - 2 || rx < 0 || rx >= COLS || data.grid[ry][rx]) break;
+                  room++;
+                }
+                for (var gi = 1; gi <= room; gi++) {
+                  var k = gi / (room + 0.3), gx = x + d[0] * gi, gy = y + d[1] * gi;
                   cellPass[nP] = undefined;
                   place(passes, nP++, gx, -0.04, gy, 0.94, 0.1, 0.94, toHaze(shade(p.pass, 0.9), k, p));
                   [-1, 1].forEach(function (sd) {
                     place(rocks, nR++, gx - d[1] * sd * 0.5, 0.65, gy + d[0] * sd * 0.5, d[0] ? 1.14 : 0.14, 1.3, d[1] ? 1.14 : 0.14, toHaze(shade(p.wall, 0.65), k, p));
                   });
                 }
-                veil(x, y, d[0], d[1], 3.6);
+                veil(x, y, d[0], d[1], room + 0.1);
                 return;
               }
               place(rocks, nR++, x + d[0] * 0.5, 0.65, y + d[1] * 0.5, d[0] ? 0.14 : 1.14, 1.3, d[1] ? 0.14 : 1.14, shade(p.wall, 0.6 + 0.2 * hash(x + nR, y)));
