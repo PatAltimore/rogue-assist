@@ -854,7 +854,7 @@
     if (n < seenKills) seenKills = 0;
     var live = view3dActive() && window.View3D && View3D.isOk();
     for (var i = Math.max(seenKills, n - 8); live && i < n; i++) {
-      View3D.death(String.fromCharCode(call('kill_type', i)), call('kill_x', i), call('kill_y', i));
+      View3D.death(String.fromCharCode(call('kill_type', i)), call('kill_x', i), call('kill_y', i), call('kill_xp', i));
     }
     seenKills = n;
   }

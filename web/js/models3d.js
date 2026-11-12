@@ -417,10 +417,12 @@ window.Models3D = (function () {
       } else {
         [-1, 1].forEach(function (s) {
           var lx = s * 0.13 * w, lc = o.legs || c;
-          add(g, geo('c', 0.085 * w, 0.07 * w, 0.22), lc, { p: [lx, 0.3, 0.0] });                              // thigh
-          add(g, geo('s', 0.07 * w), lc, { p: [lx, 0.2, 0.015] });                                             // knee
-          add(g, geo('c', 0.065 * w, 0.05 * w, 0.2), lc, { p: [lx, 0.1, -0.01], r: [-0.12, 0, 0] });           // shin
-          add(g, geo('b', 0.1 * w, 0.05, 0.17 * w), lc, { p: [lx, 0.03, 0.06] });                              // foot
+          // The hero's legs hang from hip pivots so they can swing when walking.
+          var par = o.friendly ? pivot(g, s < 0 ? 'legL' : 'legR', lx, 0.4, 0) : g, ox = o.friendly ? 0 : lx, oy = o.friendly ? 0.4 : 0;
+          add(par, geo('c', 0.085 * w, 0.07 * w, 0.22), lc, { p: [ox, 0.3 - oy, 0.0] });                              // thigh
+          add(par, geo('s', 0.07 * w), lc, { p: [ox, 0.2 - oy, 0.015] });                                             // knee
+          add(par, geo('c', 0.065 * w, 0.05 * w, 0.2), lc, { p: [ox, 0.1 - oy, -0.01], r: [-0.12, 0, 0] });           // shin
+          add(par, geo('b', 0.1 * w, 0.05, 0.17 * w), lc, { p: [ox, 0.03 - oy, 0.06] });                              // foot
           if (!o.friendly) claws(g, lx, 0.03, 0.15, 0.07 * w);
         });
         add(g, geo('s', 0.17 * w), c, { p: [0, 0.47, 0.01], s: [1.1, 0.8, 0.85] });                            // hips

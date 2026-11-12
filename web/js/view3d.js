@@ -272,8 +272,35 @@ window.View3D = (function () {
   // Moving parts of scenery: the arrow over the stairs bounces and spins, trap spikes stab.
   // A monster dies: a hit flinch, then it topples backwards, shrinks away, and a puff of
   // dust and sparks fades out where it stood.
-  function death(letter, x, y) {
-    if (!state.ok || !state.visible || state.reduceMotion) return;
+  var pops = [], shake = null;
+
+  // "+N XP" floats up from the spot where the monster fell.
+  function popup(text, x, y) {
+    var el = document.createElement('div');
+    el.className = 'xp-pop';
+    el.textContent = text;
+    stage.appendChild(el);
+    pops.push({ el: el, x: x, y: y, t0: performance.now() });
+  }
+
+  function animatePops(now) {
+    var w = stage.clientWidth, h = stage.clientHeight, v = new T.Vector3();
+    for (var i = pops.length - 1; i >= 0; i--) {
+      var p = pops[i], t = (now - p.t0) / 1000;
+      if (t > 1.6) { stage.removeChild(p.el); pops.splice(i, 1); continue; }
+      v.set(p.x, 1.1 + (state.reduceMotion ? 0 : t * 0.8), p.y).project(camera);
+      var behind = v.z > 1;
+      p.el.style.display = behind ? 'none' : 'block';
+      p.el.style.transform = 'translate(' + Math.max(45, Math.min(w - 45, (v.x * 0.5 + 0.5) * w)) + 'px,' + Math.max(22, Math.min(h - 40, (-v.y * 0.5 + 0.5) * h)) + 'px) translate(-50%,-50%) scale(' + (t < 0.15 ? 0.6 + t * 2.7 : 1) + ')';
+      p.el.style.opacity = t < 1.1 ? 1 : Math.max(0, 1 - (t - 1.1) / 0.5);
+    }
+  }
+
+  function death(letter, x, y, xp) {
+    if (!state.ok || !state.visible) return;
+    if (xp > 0) popup('+' + xp + ' XP', x, y);
+    if (state.reduceMotion) return;
+    shake = { t0: performance.now(), amp: Math.min(0.16, 0.05 + xp / 700) };
     var g = Models3D.monster(letter), p = pal();
     var rig = g.getObjectByName('rig') || g;
     g.position.set(x, 0, y);
@@ -510,6 +537,7 @@ window.View3D = (function () {
     state.heroShown.y += (state.hero.y - state.heroShown.y) * k;
     var moving = Math.abs(state.hero.x - state.heroShown.x) + Math.abs(state.hero.y - state.heroShown.y) > 0.002;
     hero.position.set(state.heroShown.x, 0, state.heroShown.y);
+    walkCycle(dt, Math.abs(state.hero.x - state.heroShown.x) + Math.abs(state.hero.y - state.heroShown.y));
     var turnBy = wrap(state.heroFace - hero.rotation.y);
     hero.rotation.y += state.reduceMotion ? turnBy : turnBy * Math.min(1, dt * 12);
     if (Math.abs(turnBy) > 0.01) moving = true;
@@ -532,6 +560,27 @@ window.View3D = (function () {
     return moving || Math.abs(state.heroShown.x - tgt.x) + Math.abs(state.heroShown.y - tgt.z) > 0.002;
   }
 
+  // The avatar's walk: legs and arms swing in opposite pairs, with a small bounce and lean.
+  var gait = { amp: 0, phase: 0 };
+  function walkCycle(dt, dist) {
+    var m = hero.userData.model;
+    if (!m) return;
+    if (m.userData.parts === undefined) {
+      m.userData.parts = { l: m.getObjectByName('legL'), r: m.getObjectByName('legR'), al: m.getObjectByName('armL'), ar: m.getObjectByName('armR') };
+    }
+    var P = m.userData.parts, target = state.reduceMotion ? 0 : Math.min(1, dist * 3);
+    gait.amp += (target - gait.amp) * Math.min(1, dt * 14);
+    gait.phase += dt * (10 + 6 * gait.amp);
+    var s = Math.sin(gait.phase) * gait.amp;
+    if (P.l) P.l.rotation.x = s * 0.85;
+    if (P.r) P.r.rotation.x = -s * 0.85;
+    if (P.al) P.al.rotation.x = -s * 0.6;
+    if (P.ar) P.ar.rotation.x = s * 0.6;
+    m.position.y = Math.abs(s) * 0.06;
+    m.rotation.x = gait.amp * 0.08;
+    if (gait.amp > 0.01) state.dirty = true;
+  }
+
   function loop(now) {
     requestAnimationFrame(loop);
     if (!state.visible || document.hidden) { state.last = now; return; }
@@ -539,8 +588,19 @@ window.View3D = (function () {
     if (now - state.last < 30) return; // about 30 frames a second is plenty and saves battery
     state.last = now;
     var moving = applyCamera(dt);
+    if (shake) { // a short camera shake that dies away
+      var st = (performance.now() - shake.t0) / 1000;
+      if (st > 0.4 || state.reduceMotion) shake = null;
+      else {
+        var f = shake.amp * (1 - st / 0.4);
+        camera.position.x += (Math.random() - 0.5) * f * 2;
+        camera.position.y += (Math.random() - 0.5) * f * 2;
+        camera.position.z += (Math.random() - 0.5) * f * 2;
+      }
+    }
     var t = now / 1000;
     if (deaths.length) animateDeaths(performance.now());
+    if (pops.length) animatePops(performance.now());
     if (!state.reduceMotion) {
       for (var i = 0; i < anim.length; i++) {
         var a = anim[i];
