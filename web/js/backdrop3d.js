@@ -146,7 +146,7 @@ window.Backdrop3D = (function () {
     g.strokeStyle = g.fillStyle = p.seal; g.shadowColor = p.seal; g.shadowBlur = 10;
     [[240, 3], [224, 1.5], [168, 2.5], [120, 1.5]].forEach(function (s) { g.lineWidth = s[1]; g.beginPath(); g.arc(0, 0, s[0], 0, 6.3); g.stroke(); });
     g.lineWidth = 1.6;
-    // a heraldic shield crossed with two swords, with a cross on the shield
+    // a crown over two crossed swords
     function sword(angle) {
       g.save(); g.rotate(angle);
       g.beginPath();
@@ -159,14 +159,16 @@ window.Backdrop3D = (function () {
     }
     g.lineWidth = 1.8;
     sword(-0.7); sword(0.7);
+    // the crown: five points with jewels, a jewelled band, and a small cross on top
+    g.lineWidth = 3;
     g.beginPath();
-    g.moveTo(-62, -76); g.lineTo(62, -76); g.lineTo(62, 8);
-    g.quadraticCurveTo(62, 70, 0, 100); g.quadraticCurveTo(-62, 70, -62, 8); g.closePath();
-    g.lineWidth = 3; g.stroke();
-    g.lineWidth = 1.5;
-    g.beginPath(); g.moveTo(-50, -64); g.lineTo(50, -64); g.lineTo(50, 6); g.quadraticCurveTo(50, 60, 0, 86); g.quadraticCurveTo(-50, 60, -50, 6); g.closePath(); g.stroke();
-    g.lineWidth = 7;
-    g.beginPath(); g.moveTo(0, -60); g.lineTo(0, 74); g.moveTo(-40, -14); g.lineTo(40, -14); g.stroke();
+    g.moveTo(-72, 38); g.lineTo(-76, -44); g.lineTo(-48, -2); g.lineTo(-37, -58); g.lineTo(-17, -2); g.lineTo(0, -72);
+    g.lineTo(17, -2); g.lineTo(37, -58); g.lineTo(48, -2); g.lineTo(76, -44); g.lineTo(72, 38); g.closePath(); g.stroke();
+    g.lineWidth = 2.4;
+    g.strokeRect(-72, 38, 144, 22);                                                         // the band
+    [[-76, -50], [-37, -64], [0, -78], [37, -64], [76, -50]].forEach(function (t) { g.beginPath(); g.arc(t[0], t[1], 6, 0, 6.3); g.stroke(); });
+    [-48, 0, 48].forEach(function (x) { g.beginPath(); g.arc(x, 49, 5, 0, 6.3); g.fill(); });
+    g.beginPath(); g.moveTo(0, -112); g.lineTo(0, -88); g.moveTo(-9, -102); g.lineTo(9, -102); g.stroke();
     g.lineWidth = 1.6;
     var r = rng(3);
     for (i = 0; i < 36; i++) {
