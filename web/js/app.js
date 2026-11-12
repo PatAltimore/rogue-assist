@@ -19,9 +19,11 @@
   var gameRunning = false;
   var exited = false;
   var lastSync = 0;
+  var printed = []; // what the game writes to stdout: the score list
+
 
   window.Module = {
-    print: function () {},
+    print: function (t) { printed.push(String(t)); if (printed.length > 80) printed.shift(); },
     printErr: function (t) { if (window.console) console.warn(t); },
     preRun: [function () {
       var name = (store.get('rogue-name', 'Rogue') || 'Rogue').replace(/[^\w ]/g, '').slice(0, 20) || 'Rogue';
@@ -70,18 +72,17 @@
     syncSaves();
     renderScreen();
     syncTextOverlay(true);
-    // The tombstone and score list stay on screen; a bar underneath offers a new game.
-    screenState.returnPrompt = false;
-    $('screen').classList.add('at-return');
-    $('returnText').textContent = 'Game over. Your score is on the list and kept in this browser.';
-    $('btnReturn').textContent = 'Start a new game';
-    $('returnBar').hidden = false;
+    // The tombstone has been dismissed; show the score list the game printed, and a new-game button.
+    $('returnBar').hidden = true;
+    var board = printed.join('\n').replace(/\[Press return to continue\]/, '').trim();
+    showOverlay('Game over', true, board);
   }
 
-  function showOverlay(text, withButton) {
+  function showOverlay(text, withButton, board) {
     $('overlayText').textContent = text;
+    $('overlayBoard').textContent = board || '';
+    $('overlayBoard').hidden = !board;
     $('btnOverlayNew').hidden = !withButton;
-    $('overlay').classList.toggle('bar', !!withButton);
     $('overlay').hidden = false;
   }
 

@@ -268,9 +268,11 @@ death(char monst)
     move(LINES - 1, 0);
     refresh();
     score(purse, amulet ? 3 : 0, monst);
+#ifndef __EMSCRIPTEN__
     printf("[Press return to continue]");
     fflush(stdout);
-    (void) fgets(prbuf,10,stdin);
+    (void) fgets(prbuf,10,stdin);	/* in the browser this would pop up a prompt box */
+#endif
     my_exit(0);
 }
 

@@ -336,3 +336,6 @@ code { font-family: var(--font-mono); background: var(--panel-2); padding: 0 4px
 .return-bar button { background: var(--accent); color: var(--accent-text); border-color: var(--accent); font-weight: 600; padding: 8px 16px; }
 .screen.at-return .cur { display: none; }
 .mode-3d .screen-wrap .return-bar, .mode-3d .screen-wrap .overlay.bar { pointer-events: auto; }
+
+.overlay-board { margin: 0 0 14px; text-align: left; font: 0.85rem/1.4 var(--font-mono); tab-size: 8; max-height: 55vh; overflow: auto; color: var(--text); }
+.overlay-board[hidden] { display: none; }
