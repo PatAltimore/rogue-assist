@@ -180,7 +180,7 @@
     var perCol = probe.getBoundingClientRect().width / 80 / 100; // width per column per 1px of font
     document.body.removeChild(probe);
     var fit = Math.floor(avail / (COLS * perCol));
-    if (mode === '3d') {
+    if (is3d()) {
       var cs = getComputedStyle(wrap);
       var availH = wrap.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom) - 2;
       fit = Math.min(fit, Math.floor(availH / (ROWS * 1.2)));
@@ -224,7 +224,14 @@
   }
 
   document.addEventListener('keydown', function (e) {
-    if (isTyping(e) || e.ctrlKey || e.metaKey || e.altKey) return;
+    if (isTyping(e) || e.ctrlKey || e.metaKey) return;
+    if (walker && e.key !== 'Shift' && e.key !== 'Alt') cancelWalk();
+    if (mode === 'walk' && ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].indexOf(e.key) >= 0) {
+      walkArrow(e);
+      e.preventDefault();
+      return;
+    }
+    if (e.altKey) return;
     var ae = document.activeElement;
     if (ae && ae.tagName === 'BUTTON' && (e.key === ' ' || e.key === 'Enter')) {
       // Buttons elsewhere keep their keyboard activation; in the game pane Space
@@ -249,12 +256,179 @@
     if (!b) return;
     var k = b.dataset.key;
     if (b.id === 'btnRun') { setRun(!runNext); return; }
+    cancelWalk();
+    if (mode === 'walk' && b.dataset.walk) { walkAction(b.dataset.walk); e.preventDefault(); return; }
     if (!k) return;
     if (k === 'y_') sendKey(121);
     else if (k.length === 1) sendChar(k);
     else sendNamed(k);
     e.preventDefault();
   });
+
+
+  // ------------------------------------------------------- walk view controls
+
+  // Facing 0 is north (up the map) and counts clockwise; these are the game's keys for each.
+  var DIR_KEYS = ['k', 'u', 'l', 'n', 'j', 'b', 'h', 'y'];
+  var DIR_DELTA = [[0, -1], [1, -1], [1, 0], [1, 1], [0, 1], [-1, 1], [-1, 0], [-1, -1]]; // [dx, dy]
+  var walker = null;
+  var lastGrid = null;
+
+  function stepRel(rel, run) {
+    var dir = (View3D.getFacing() + rel) & 7;
+    var key = DIR_KEYS[dir];
+    if (run || runNext) { key = key.toUpperCase(); setRun(false); }
+    sendKey(key.charCodeAt(0));
+  }
+
+  function walkAction(name) {
+    if (name === 'turnL') View3D.turn(-1);
+    else if (name === 'turnR') View3D.turn(1);
+    else if (name === 'fwd') stepRel(0);
+    else if (name === 'back') stepRel(4);
+    else if (name === 'strL') stepRel(6);
+    else if (name === 'strR') stepRel(2);
+    else if (name === 'rest') sendKey(46);
+  }
+
+  function walkArrow(e) {
+    if (e.key === 'ArrowUp') stepRel(0, e.shiftKey);
+    else if (e.key === 'ArrowDown') stepRel(4, e.shiftKey);
+    else if (e.key === 'ArrowLeft') { if (e.altKey) stepRel(6); else View3D.turn(-1); }
+    else if (e.key === 'ArrowRight') { if (e.altKey) stepRel(2); else View3D.turn(1); }
+  }
+
+  // On a phone the d-pad turns into turn / forward / back / sidestep buttons in the walk view.
+  function setWalkControls(on) {
+    Array.prototype.forEach.call(document.querySelectorAll('.dpad button[data-walk]'), function (b) {
+      if (!b.dataset.label) b.dataset.label = b.textContent;
+      if (b.dataset.walk === 'none') { b.classList.toggle('walk-off', on); return; }
+      if (b.dataset.walkLabel) b.innerHTML = on ? b.dataset.walkLabel : b.dataset.label;
+    });
+    var titles = { rotl: ['Turn left', 'Rotate left'], rotr: ['Turn right', 'Rotate right'] };
+    Array.prototype.forEach.call(document.querySelectorAll('[data-v3="rotl"], [data-v3="rotr"]'), function (b) {
+      var t = titles[b.dataset.v3];
+      b.title = on ? t[0] : t[1];
+    });
+  }
+
+  // --- tap to walk
+
+  function gridChar(x, y) {
+    if (!lastGrid || y < 1 || y > ROWS - 2 || x < 0 || x >= COLS) return '';
+    var c = lastGrid[y][x];
+    return c ? String.fromCharCode(c) : '';
+  }
+
+  // Squares we can step onto: remembered, not a wall, trap or monster (the hero's own @ is fine).
+  function canStand(x, y) {
+    var c = gridChar(x, y);
+    return c !== '' && c !== '|' && c !== '-' && c !== '^' && !(c >= 'A' && c <= 'Z');
+  }
+
+  // The game's rule for diagonals: both squares beside the move must be open (monsters do not count).
+  function openForDiagonal(x, y) {
+    var c = gridChar(x, y);
+    return c !== '' && c !== '|' && c !== '-';
+  }
+
+  function diagonalOk(x, y, dx, dy) {
+    return dx === 0 || dy === 0 || (openForDiagonal(x + dx, y) && openForDiagonal(x, y + dy));
+  }
+
+  function canStep(x, y, dx, dy) {
+    return canStand(x + dx, y + dy) && diagonalOk(x, y, dx, dy);
+  }
+
+  // Shortest path from the hero: returns the squares to walk through (not the start), or null.
+  function findPath(from, isGoal) {
+    var key = function (x, y) { return y * 100 + x; };
+    var prev = {}, queue = [[from.x, from.y]], head = 0;
+    prev[key(from.x, from.y)] = -1;
+    while (head < queue.length) {
+      var cur = queue[head++];
+      if ((cur[0] !== from.x || cur[1] !== from.y) && isGoal(cur[0], cur[1])) {
+        var path = [], k = key(cur[0], cur[1]);
+        while (k !== -1 && k !== key(from.x, from.y)) { path.unshift({ x: k % 100, y: Math.floor(k / 100) }); k = prev[k]; }
+        return path;
+      }
+      for (var d = 0; d < 8; d++) {
+        var nx = cur[0] + DIR_DELTA[d][0], ny = cur[1] + DIR_DELTA[d][1];
+        if (prev[key(nx, ny)] !== undefined || !canStep(cur[0], cur[1], DIR_DELTA[d][0], DIR_DELTA[d][1])) continue;
+        prev[key(nx, ny)] = key(cur[0], cur[1]);
+        queue.push([nx, ny]);
+      }
+    }
+    return null;
+  }
+
+  function dirIndex(dx, dy) {
+    for (var d = 0; d < 8; d++) if (DIR_DELTA[d][0] === dx && DIR_DELTA[d][1] === dy) return d;
+    return -1;
+  }
+
+  function tellHud(text) {
+    hudLog.push({ text: text, t: Date.now() });
+    if (hudLog.length > 4) hudLog.shift();
+    if (lastState) updateHud(lastState);
+  }
+
+  function cancelWalk() { walker = null; }
+
+  function handleTap(c) {
+    if (mode !== 'walk' || !lastState || !lastGrid || exited || !gameRunning) return;
+    cancelWalk();
+    if (!call('at_prompt')) return; // the game is waiting for something other than a move
+    var hero = { x: lastState.heroX, y: lastState.heroY };
+    var monster = null;
+    lastState.seen.forEach(function (m) { if (m.x === c.x && m.y === c.y) monster = m; });
+
+    if (c.x === hero.x && c.y === hero.y) {
+      // Standing on the stairs: tapping yourself takes them.
+      if (call('stairs_known') && call('stairs_x') === hero.x && call('stairs_y') === hero.y) sendKey(62);
+      return;
+    }
+    var dx = c.x - hero.x, dy = c.y - hero.y;
+    if (monster && Math.abs(dx) <= 1 && Math.abs(dy) <= 1) {
+      // Next to it: attack by moving into it, if the game lets us move that way.
+      var d = dirIndex(dx, dy);
+      if (d >= 0 && diagonalOk(hero.x, hero.y, dx, dy)) { View3D.setFacing(d); sendKey(DIR_KEYS[d].charCodeAt(0)); }
+      return;
+    }
+    var path = monster
+      ? findPath(hero, function (x, y) { return Math.abs(x - c.x) <= 1 && Math.abs(y - c.y) <= 1 && diagonalOk(x, y, c.x - x, c.y - y); })
+      : (canStand(c.x, c.y) ? findPath(hero, function (x, y) { return x === c.x && y === c.y; }) : null);
+    if (!path || !path.length) {
+      tellHud(monster || canStand(c.x, c.y) ? 'No known way there.' : 'You cannot walk there.');
+      return;
+    }
+    walker = { path: path, i: 0, hp: lastState.hp, seen: lastState.seen.length, from: hero, expect: null };
+    stepWalker();
+  }
+
+  function stepWalker() {
+    if (!walker) return;
+    var w = walker, next = w.path[w.i], prev = w.i ? w.path[w.i - 1] : w.from;
+    var d = dirIndex(next.x - prev.x, next.y - prev.y);
+    if (d < 0) { cancelWalk(); return; }
+    w.expect = next;
+    w.i++;
+    View3D.setFacing(d);
+    // A short pause lets the camera turn and glide between squares.
+    setTimeout(function () { if (walker === w) sendKey(DIR_KEYS[d].charCodeAt(0)); }, 120);
+  }
+
+  // Called each time the game is waiting for a key: decide whether the walk goes on.
+  function walkTick() {
+    if (!walker || !lastState) return;
+    var w = walker, s = lastState;
+    if (!call('at_prompt')) { cancelWalk(); return; }           // a prompt or --More-- came up
+    if (w.expect && (s.heroX !== w.expect.x || s.heroY !== w.expect.y)) { cancelWalk(); return; } // blocked or fought
+    if (s.hp < w.hp || s.seen.length > w.seen) { cancelWalk(); return; } // hurt, or something came into view
+    w.seen = Math.max(w.seen, s.seen.length);
+    if (w.i >= w.path.length) { cancelWalk(); return; }          // arrived
+    stepWalker();
+  }
 
   // ---------------------------------------------------------------- state
 
@@ -645,13 +819,15 @@
         monsters.push({ ch: String.fromCharCode(call('monster_type', i, 0)), x: call('monster_x', i, 0), y: call('monster_y', i, 0), radar: true });
       }
     }
+    lastGrid = grid;
     View3D.update({
       grid: grid, hero: { x: s.heroX, y: s.heroY }, level: s.level, monsters: monsters,
       stairs: mapOpts.stairs && call('stairs_y') ? { x: call('stairs_x'), y: call('stairs_y') } : null
     });
   }
 
-  function view3dActive() { return mode === '3d' || view3dOpen; }
+  function is3d() { return mode === '3d' || mode === 'walk'; }
+  function view3dActive() { return is3d() || view3dOpen; }
 
   function setView3dOpen(open) {
     view3dOpen = open;
@@ -669,16 +845,35 @@
   var hudLog = [];
   var hudTimer = null;
 
+  // The text layer over the 3D views has its own setting for the overhead and walk views
+  // (it is off by default in the first-person view, where it only gets in the way).
+  function ovKey() { return mode === 'walk' ? 'rogue-text-opacity-walk' : 'rogue-text-opacity'; }
+
+  function applyOv(save) {
+    var ov = $('ovOpacity');
+    if (!save) ov.value = store.get(ovKey(), mode === 'walk' ? '0' : '25');
+    var v = ov.value / 100;
+    $('gamePane').style.setProperty('--ov', String(v));
+    $('gamePane').style.setProperty('--ov-menu', String(Math.max(v, 0.9)));
+    if (save) store.set(ovKey(), ov.value);
+  }
+
   function setMode(m) {
-    if (m === '3d' && !(window.View3D && View3D.isOk())) m = '2d';
+    if (m !== '2d' && !(window.View3D && View3D.isOk())) m = '2d';
     mode = m;
+    cancelWalk();
     store.set('rogue-mode', m);
-    $('gamePane').classList.toggle('mode-3d', m === '3d');
+    var on3d = m !== '2d';
+    $('gamePane').classList.toggle('mode-3d', on3d);
+    $('gamePane').classList.toggle('mode-walk', m === 'walk');
     $('modeText').setAttribute('aria-pressed', m === '2d');
     $('mode3d').setAttribute('aria-pressed', m === '3d');
-    $('ovLabel').hidden = m !== '3d';
-    $('hudMsg').hidden = $('hudStatus').hidden = m !== '3d';
-    if (window.View3D) View3D.setVisible(view3dActive());
+    $('modeWalk').setAttribute('aria-pressed', m === 'walk');
+    $('ovLabel').hidden = !on3d;
+    $('hudMsg').hidden = $('hudStatus').hidden = !on3d;
+    if (window.View3D) { View3D.setView(m === 'walk' ? 'walk' : 'orbit'); View3D.setVisible(view3dActive()); }
+    setWalkControls(m === 'walk');
+    applyOv();
     syncTextOverlay(true);
     fitScreen();
     if (lastState) { update3d(lastState); updateHud(lastState); }
@@ -694,7 +889,7 @@
 
   var textShown = null;
   function syncTextOverlay(force) {
-    if (mode !== '3d') { $('gamePane').classList.remove('needs-text'); textShown = null; return; }
+    if (!is3d()) { $('gamePane').classList.remove('needs-text'); textShown = null; return; }
     var show = needsText();
     if (show === textShown && !force) return;
     textShown = show;
@@ -712,7 +907,7 @@
   }
 
   function updateHud(s) {
-    if (mode !== '3d') return;
+    if (!is3d()) return;
     var text = textShown ? '' : row0Text();
     var now = Date.now();
     if (text && (!hudLog.length || hudLog[hudLog.length - 1].text !== text)) {
@@ -745,6 +940,7 @@
   function setupView3d() {
     var ok = window.View3D && View3D.init($('view3dStage'));
     if (!ok) {
+      $('modeText').parentNode.hidden = true;
       Array.prototype.forEach.call(document.querySelectorAll('[data-v3]'), function (b) { b.hidden = true; });
       $('view3dHelp').hidden = true;
       $('btnView3d').hidden = true;
@@ -759,16 +955,9 @@
     setView3dOpen(view3dOpen);
     $('modeText').addEventListener('click', function () { setMode('2d'); });
     $('mode3d').addEventListener('click', function () { setMode('3d'); });
-    var ov = $('ovOpacity');
-    ov.value = store.get('rogue-text-opacity', '25');
-    function applyOv() {
-      var v = ov.value / 100;
-      $('gamePane').style.setProperty('--ov', String(v));
-      $('gamePane').style.setProperty('--ov-menu', String(Math.max(v, 0.9)));
-      store.set('rogue-text-opacity', ov.value);
-    }
-    ov.addEventListener('input', applyOv);
-    applyOv();
+    $('modeWalk').addEventListener('click', function () { setMode('walk'); });
+    View3D.onTap(handleTap);
+    $('ovOpacity').addEventListener('input', function () { applyOv(true); });
     setMode(mode);
   }
   function refreshSidebar() {
@@ -789,6 +978,7 @@
     renderScreen();
     syncTextOverlay();
     refreshSidebar();
+    walkTick();
     var now = Date.now();
     if (now - lastSync > 15000) { lastSync = now; syncSaves(); }
   }

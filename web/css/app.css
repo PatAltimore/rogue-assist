@@ -313,3 +313,12 @@ code { font-family: var(--font-mono); background: var(--panel-2); padding: 0 4px
 
 /* While a menu is up its own text fills the top, so only the status bar stays. */
 .mode-3d.needs-text .hud-top:not([hidden]) { display: none; }
+
+/* Walk view: first-person controls. */
+.mode-walk [data-v3="tiltup"], .mode-walk [data-v3="tiltdown"], .mode-walk [data-v3="zoomin"],
+.mode-walk [data-v3="zoomout"], .mode-walk [data-v3="reset"] { display: none; }
+.mode-walk .view3d-stage canvas { cursor: crosshair; }
+.dpad button.walk-off { visibility: hidden; }
+
+/* display: grid above would otherwise override the hidden attribute and leave an invisible layer over the canvas */
+.view3d-msg[hidden] { display: none; }

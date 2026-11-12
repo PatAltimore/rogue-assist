@@ -25,6 +25,7 @@
     <div class="viewmode" role="group" aria-label="Main view">
       <button id="modeText" aria-pressed="true">Text</button>
       <button id="mode3d" aria-pressed="false">3D</button>
+      <button id="modeWalk" aria-pressed="false" title="First-person view: arrows walk and turn, tap a square to go there">First-person</button>
     </div>
     <div class="stage-area" id="stageArea">
     <div class="screen-wrap" id="screenWrap">
@@ -62,9 +63,9 @@
     <div class="status-note" id="statusNote">Click the game and type to play. Arrow keys move; hold Shift to run.</div>
     <div class="touch" id="touch" aria-label="On-screen controls">
       <div class="dpad">
-        <button data-key="y">&#8598;</button><button data-key="k">&#8593;</button><button data-key="u">&#8599;</button>
-        <button data-key="h">&#8592;</button><button data-key="." class="rest">rest</button><button data-key="l">&#8594;</button>
-        <button data-key="b">&#8601;</button><button data-key="j">&#8595;</button><button data-key="n">&#8600;</button>
+        <button data-key="y" data-walk="turnL" data-walk-label="&#10226;">&#8598;</button><button data-key="k" data-walk="fwd" data-walk-label="&#9650;">&#8593;</button><button data-key="u" data-walk="turnR" data-walk-label="&#10227;">&#8599;</button>
+        <button data-key="h" data-walk="strL" data-walk-label="&#9664;">&#8592;</button><button data-key="." data-walk="rest" class="rest">rest</button><button data-key="l" data-walk="strR" data-walk-label="&#9654;">&#8594;</button>
+        <button data-key="b" data-walk="none">&#8601;</button><button data-key="j" data-walk="back" data-walk-label="&#9660;">&#8595;</button><button data-key="n" data-walk="none">&#8600;</button>
       </div>
       <div class="keys">
         <button id="btnRun" class="toggle">Run</button>

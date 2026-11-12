@@ -5,6 +5,7 @@ window.View3D = (function () {
 
   var COLS = 80, ROWS = 24;
   var MAX_CELLS = COLS * ROWS;
+  var STEP = Math.PI / 4; // the walk view turns in 45 degree steps
 
   var PALETTES = {
     modern: {
@@ -22,10 +23,12 @@ window.View3D = (function () {
   var state = {
     ok: false, visible: false, theme: 'modern', reduceMotion: false,
     yaw: 0, pitch: 0.95, dist: 13, level: -1, hero: { x: 0, y: 0 }, heroShown: null,
-    dirty: true, last: 0
+    dirty: true, last: 0,
+    view: 'orbit', walk: { yaw: 0, target: 0 }
   };
   var T, renderer, scene, camera, stage, canvas;
-  var walls, floors, passes, dynamic, hero, heroLight, fog, ambient, sun;
+  var walls, floors, passes, rocks, ceiling, dynamic, hero, heroLight, fog, ambient, sun;
+  var cellWall = [], cellFloor = [], cellPass = [], tapHandler = null;
   var geo = {}, mats = {}, labelCache = {}, anim = [];
   var frontierMeshes = [];
 
@@ -94,6 +97,19 @@ window.View3D = (function () {
       m.setColorAt(0, new T.Color(0xffffff));
       scene.add(m);
     });
+    // Walk view only: rock walls along corridors, and a ceiling.
+    rocks = new T.InstancedMesh(geo.box, new T.MeshLambertMaterial({ color: 0xffffff }), 4 * MAX_CELLS);
+    rocks.instanceMatrix.setUsage(T.DynamicDrawUsage);
+    rocks.frustumCulled = false;
+    rocks.setColorAt(0, new T.Color(0xffffff));
+    rocks.visible = false;
+    rocks.count = 0;
+    scene.add(rocks);
+    ceiling = new T.Mesh(new T.PlaneGeometry(COLS + 4, ROWS + 4), new T.MeshBasicMaterial({ color: 0x101218 }));
+    ceiling.rotation.x = Math.PI / 2;
+    ceiling.position.set(COLS / 2, 1.32, ROWS / 2);
+    ceiling.visible = false;
+    scene.add(ceiling);
     dynamic = new T.Group();
     scene.add(dynamic);
 
@@ -113,11 +129,32 @@ window.View3D = (function () {
     var p = pal();
     scene.background = new T.Color(p.bg);
     scene.fog = new T.Fog(p.bg, 16, 46);
+    ceiling.material.color.set(shade(p.wall, 0.22));
     Models3D.setTheme(state.theme);
     if (hero.userData.model) hero.remove(hero.userData.model);
     hero.userData.model = Models3D.hero();
     hero.add(hero.userData.model);
     hero.userData.ring.material.color.set(p.frontier);
+    applyView();
+    state.dirty = true;
+  }
+
+  // Orbit: the overhead camera. Walk: first person at eye height.
+  function applyView() {
+    if (!scene) return;
+    var walk = state.view === 'walk';
+    hero.visible = !walk;
+    ceiling.visible = walk;
+    rocks.visible = walk;
+    camera.fov = walk ? 75 : 45;
+    camera.near = walk ? 0.05 : 0.1;
+    camera.updateProjectionMatrix();
+    scene.fog.near = walk ? 2.5 : 16;
+    scene.fog.far = walk ? 13 : 46;
+    heroLight.intensity = walk ? 1.4 : 1.1;
+    ambient.intensity = walk ? 0.45 : 0.6;
+    sun.intensity = walk ? 0.3 : 0.65;
+    heroLight.distance = walk ? 12 : 14;
     state.dirty = true;
   }
 
@@ -178,6 +215,7 @@ window.View3D = (function () {
 
   function addAt(obj, x, y, z, bob) {
     obj.position.set(x, y, z);
+    obj.userData.cell = { x: x, y: z }; // lets a tap find what was touched
     dynamic.add(obj);
     if (bob) anim.push({ obj: obj, base: y, phase: hash(x, z) * 6.28, spin: bob === 2 });
     return obj;
@@ -186,11 +224,13 @@ window.View3D = (function () {
   function addMonster(letter, x, y, p, dim, hero) {
     var g = Models3D.monster(letter);
     var h = (g.userData && g.userData.h) || 1.2;
-    var sprite = new T.Sprite(new T.SpriteMaterial({ map: label(letter, p.mon), transparent: true, depthTest: false, opacity: dim ? 0.8 : 1 }));
-    sprite.scale.set(0.8, 0.8, 1);
-    sprite.position.y = h + 0.2;
+    var sprite = new T.Sprite(new T.SpriteMaterial({ map: label(letter, p.mon), transparent: true, depthTest: state.view === 'walk', opacity: dim ? 0.8 : 1 }));
+    var ls = state.view === 'walk' ? 0.4 : 0.8; // smaller up close in first person
+    sprite.scale.set(ls, ls, 1);
+    sprite.position.y = h + (state.view === 'walk' ? 0.12 : 0.2);
     g.add(sprite);
     g.position.set(x, 0, y);
+    g.userData.cell = { x: x, y: y };
     // Face the hero.
     if (hero) g.rotation.y = Math.atan2(hero.x - x, hero.y - y);
     dynamic.add(g);
@@ -202,7 +242,9 @@ window.View3D = (function () {
   function update(data) {
     if (!state.ok || !state.visible) return;
     var p = pal();
-    var nW = 0, nF = 0, nP = 0;
+    var nW = 0, nF = 0, nP = 0, nR = 0;
+    var walk = state.view === 'walk';
+    cellWall.length = cellFloor.length = cellPass.length = 0;
     clearDynamic();
 
     for (var y = 1; y < ROWS - 1; y++) {
@@ -212,13 +254,24 @@ window.View3D = (function () {
         var ch = String.fromCharCode(code);
         var v = 0.86 + 0.28 * hash(x, y);
         if (ch === '|' || ch === '-') {
+          cellWall[nW] = y * 100 + x;
           place(walls, nW++, x, 0.65, y, 1, 1.3, 1, shade(p.wall, 0.9 + 0.2 * hash(x, y)));
           continue;
         }
         if (ch === '#') {
+          cellPass[nP] = y * 100 + x;
           place(passes, nP++, x, -0.04, y, 0.94, 0.1, 0.94, shade(p.pass, v));
+          if (walk) {
+            // Corridors have no walls in the map data, so close in the open sides.
+            [[1, 0], [-1, 0], [0, 1], [0, -1]].forEach(function (d) {
+              var ny = y + d[1], nx = x + d[0];
+              if (ny < 1 || ny > ROWS - 2 || nx < 0 || nx >= COLS || data.grid[ny][nx]) return;
+              place(rocks, nR++, x + d[0] * 0.5, 0.65, y + d[1] * 0.5, d[0] ? 0.14 : 1, 1.3, d[1] ? 0.14 : 1, shade(p.wall, 0.55 + 0.2 * hash(x + nR, y)));
+            });
+          }
           continue;
         }
+        cellFloor[nF] = y * 100 + x;
         place(floors, nF++, x, -0.05, y, 0.98, 0.1, 0.98, shade(p.floor, v));
         if (ch === '+') {
           var left = String.fromCharCode(data.grid[y][x - 1] || 0), right = String.fromCharCode(data.grid[y][x + 1] || 0);
@@ -253,6 +306,9 @@ window.View3D = (function () {
     }
     data.monsters.forEach(function (m) { addMonster(m.ch, m.x, m.y, p, m.radar, data.hero); });
 
+    rocks.count = nR;
+    rocks.instanceMatrix.needsUpdate = true;
+    if (rocks.instanceColor) rocks.instanceColor.needsUpdate = true;
     [[walls, nW], [floors, nF], [passes, nP]].forEach(function (pair) {
       pair[0].count = pair[1];
       pair[0].instanceMatrix.needsUpdate = true;
@@ -282,6 +338,15 @@ window.View3D = (function () {
     var moving = Math.abs(state.hero.x - state.heroShown.x) + Math.abs(state.hero.y - state.heroShown.y) > 0.002;
     hero.position.set(state.heroShown.x, 0, state.heroShown.y);
     heroLight.position.set(state.heroShown.x, 1.8, state.heroShown.y);
+    if (state.view === 'walk') {
+      var w = state.walk, wk = state.reduceMotion ? 1 : Math.min(1, dt * 10);
+      var diff = wrap(w.target - w.yaw);
+      w.yaw += diff * wk;
+      if (Math.abs(diff) < 0.002) w.yaw = w.target;
+      camera.position.set(state.heroShown.x, 0.82, state.heroShown.y);
+      camera.lookAt(state.heroShown.x + Math.sin(w.yaw), 0.8, state.heroShown.y - Math.cos(w.yaw));
+      return moving || Math.abs(diff) > 0.002;
+    }
     var ck = state.reduceMotion ? 1 : Math.min(1, dt * 6);
     tgt.x += (state.heroShown.x - tgt.x) * ck;
     tgt.z += (state.heroShown.y - tgt.z) * ck;
@@ -338,22 +403,70 @@ window.View3D = (function () {
   // ---------------------------------------------------------- controls
 
   function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
+  function wrap(a) { return ((a + Math.PI) % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI) - Math.PI; }
+  // Facing: 0 = north (up the map), counting clockwise in 45 degree steps (2 = east).
+  function getFacing() { return (((Math.round(state.walk.target / STEP)) % 8) + 8) % 8; }
+  function setFacing(f) {
+    state.walk.target = state.walk.yaw + wrap(f * STEP - state.walk.yaw);
+    state.dirty = true;
+  }
+  function turn(steps) {
+    state.walk.target = Math.round(state.walk.target / STEP) * STEP + steps * STEP;
+    state.dirty = true;
+  }
+  function snapWalk() { state.walk.target = Math.round(state.walk.yaw / STEP) * STEP; state.dirty = true; }
+
+  var ray, ndc;
+  // Finds the map square under a screen point, or null (a wall, or nothing).
+  function pick(cx, cy) {
+    if (!T) return null;
+    ray = ray || new T.Raycaster();
+    ndc = ndc || new T.Vector2();
+    var r = canvas.getBoundingClientRect();
+    ndc.set(((cx - r.left) / r.width) * 2 - 1, -((cy - r.top) / r.height) * 2 + 1);
+    ray.setFromCamera(ndc, camera);
+    var best = null, bd = Infinity, i, o, hits = ray.intersectObjects(dynamic.children, true);
+    for (i = 0; i < hits.length && !best; i++) {
+      for (o = hits[i].object; o && !best; o = o.parent) {
+        if (o.userData && o.userData.cell) { best = o.userData.cell; bd = hits[i].distance; }
+      }
+    }
+    var sh = ray.intersectObjects([walls, floors, passes], false)[0];
+    if (sh && sh.distance < bd) {
+      if (sh.object === walls) return null;
+      var code = (sh.object === floors ? cellFloor : cellPass)[sh.instanceId];
+      best = code === undefined ? null : { x: code % 100, y: Math.floor(code / 100) };
+    }
+    return best;
+  }
   function rotate(d) { state.yaw += d; state.dirty = true; }
   function tilt(d) { state.pitch = clamp(state.pitch + d, 0.25, 1.5); state.dirty = true; }
   function zoom(f) { state.dist = clamp(state.dist * f, 4, 34); state.dirty = true; }
   function reset() { state.yaw = 0; state.pitch = 0.95; state.dist = 13; state.dirty = true; }
 
   function bindControls() {
-    var pointers = {}, lastPinch = 0;
+    var pointers = {}, lastPinch = 0, down = null;
 
     canvas.addEventListener('pointerdown', function (e) {
       pointers[e.pointerId] = { x: e.clientX, y: e.clientY };
+      down = Object.keys(pointers).length === 1 ? { x: e.clientX, y: e.clientY, t: Date.now(), moved: 0 } : null;
       try { canvas.setPointerCapture(e.pointerId); } catch (err) { /* not capturable */ }
     });
     canvas.addEventListener('pointermove', function (e) {
       var p = pointers[e.pointerId];
       if (!p) return;
       var ids = Object.keys(pointers);
+      if (down) down.moved += Math.abs(e.clientX - p.x) + Math.abs(e.clientY - p.y);
+      if (state.view === 'walk') {
+        // Look around freely; the view snaps to a 45 degree facing on release.
+        if (ids.length === 1) {
+          state.walk.yaw -= (e.clientX - p.x) * 0.006;
+          state.walk.target = state.walk.yaw;
+          state.dirty = true;
+        }
+        pointers[e.pointerId] = { x: e.clientX, y: e.clientY };
+        return;
+      }
       if (ids.length === 2) {
         pointers[e.pointerId] = { x: e.clientX, y: e.clientY };
         var a = pointers[ids[0]], b = pointers[ids[1]];
@@ -367,7 +480,18 @@ window.View3D = (function () {
       pointers[e.pointerId] = { x: e.clientX, y: e.clientY };
     });
     function end(e) { delete pointers[e.pointerId]; lastPinch = 0; }
-    canvas.addEventListener('pointerup', end);
+    canvas.addEventListener('pointerup', function (e) {
+      var wasTap = down && down.moved < 10 && Date.now() - down.t < 500 && Object.keys(pointers).length === 1;
+      end(e);
+      if (state.view === 'walk') {
+        snapWalk();
+        if (wasTap && tapHandler) {
+          var c = pick(e.clientX, e.clientY);
+          if (c) tapHandler(c);
+        }
+      }
+      down = null;
+    });
     canvas.addEventListener('pointercancel', end);
     canvas.addEventListener('wheel', function (e) {
       e.preventDefault();
@@ -376,6 +500,11 @@ window.View3D = (function () {
   }
 
   function command(name) {
+    if (state.view === 'walk') {
+      if (name === 'rotl') turn(-1);
+      else if (name === 'rotr') turn(1);
+      return;
+    }
     if (name === 'rotl') rotate(Math.PI / 4);
     else if (name === 'rotr') rotate(-Math.PI / 4);
     else if (name === 'tiltup') tilt(-0.15);
@@ -391,6 +520,11 @@ window.View3D = (function () {
     command: command,
     isOk: function () { return state.ok; },
     setVisible: function (v) { state.visible = !!v; state.dirty = true; if (v) resize(); },
-    setTheme: function (t) { state.theme = t === 'retro' ? 'retro' : 'modern'; applyTheme(); }
+    setTheme: function (t) { state.theme = t === 'retro' ? 'retro' : 'modern'; applyTheme(); },
+    setView: function (v) { state.view = v === 'walk' ? 'walk' : 'orbit'; applyView(); },
+    getFacing: getFacing,
+    setFacing: setFacing,
+    turn: turn,
+    onTap: function (fn) { tapHandler = fn; }
   };
 })();

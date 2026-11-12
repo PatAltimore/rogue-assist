@@ -281,6 +281,12 @@ var RogueData = (function () {
         'Picking it up makes the way back up very dangerous: the dungeon has changed.',
         'You must climb all the way up using < on each level. Many scrolls of teleportation and magic mapping help. Save food and healing for the return trip.'
       ] },
+    { id: 'walk', title: 'First-person view',
+      tiers: [
+        'The First-person button above the game switches to a first-person view. Your keys and taps drive it.',
+        'Up and Down arrows step forward and back. Left and Right turn 45 degrees (turning costs no game turn). Hold Alt with Left or Right to sidestep, and Shift with Up to run. Drag the view to look around; it snaps to the nearest of the 8 directions when you let go.',
+        'Tap a square to walk there: your character follows the shortest known path and stops if a monster appears, you get hurt, or a message needs you. Tap a monster to walk up to it, and tap it again when it is next to you to attack. Tap the stairs (%) while standing on them to go down. Any key press cancels the walk. On a phone the d-pad becomes turn, forward, back and sidestep buttons.'
+      ] },
     { id: 'saving', title: 'Saving and quitting',
       tiers: [
         'Rogue has no permadeath-free mode, but you can save.',
