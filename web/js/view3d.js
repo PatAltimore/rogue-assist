@@ -154,7 +154,7 @@ window.View3D = (function () {
     camera.updateProjectionMatrix();
     scene.background.set(walk ? p.haze : p.bg);
     scene.fog.color.set(walk ? p.haze : p.bg);
-    scene.fog.near = walk ? 1.4 : 16;
+    scene.fog.near = walk ? 1.5 : 16;
     scene.fog.far = walk ? 6.5 : 46;
     heroLight.intensity = walk ? 1.4 : 1.1;
     ambient.intensity = walk ? 0.45 : 0.6;
@@ -181,6 +181,11 @@ window.View3D = (function () {
   function toHaze(color, k, p) {
     return new T.Color(color).lerp(new T.Color(p.haze), k).getHex();
   }
+
+  // Neighbouring corridor wall pieces overlap at the corners, so each gets a slightly different
+  // thickness and height: otherwise their faces coincide and shimmer while the camera moves.
+  function rt(x, y) { return 0.14 + 0.012 * ((x + 2 * y) % 4); }
+  function rh(x, y) { return 1.3 + 0.015 * ((x * 3 + y) % 5); }
 
   function shade(color, k) {
     var c = new T.Color(color);
@@ -361,13 +366,13 @@ window.View3D = (function () {
                   cellPass[nP] = undefined;
                   place(passes, nP++, gx, -0.04, gy, 0.94, 0.1, 0.94, shade(p.pass, gv));
                   [-1, 1].forEach(function (sd) {
-                    place(rocks, nR++, gx - d[1] * sd * 0.5, 0.65, gy + d[0] * sd * 0.5, d[0] ? 1.14 : 0.14, 1.3, d[1] ? 1.14 : 0.14, shade(p.wall, 0.6 + 0.2 * hash(gx + nR, gy)));
+                    place(rocks, nR++, gx - d[1] * sd * 0.5, 0.65, gy + d[0] * sd * 0.5, d[0] ? 1.14 : rt(gx, gy), rh(gx, gy), d[1] ? 1.14 : rt(gx, gy), shade(p.wall, 0.6 + 0.2 * hash(gx + sd * 5, gy)));
                   });
                 }
                 veil(x, y, d[0], d[1], room + 0.1);
                 return;
               }
-              place(rocks, nR++, x + d[0] * 0.5, 0.65, y + d[1] * 0.5, d[0] ? 0.14 : 1.14, 1.3, d[1] ? 0.14 : 1.14, shade(p.wall, 0.6 + 0.2 * hash(x + nR, y)));
+              place(rocks, nR++, x + d[0] * 0.5, 0.65, y + d[1] * 0.5, d[0] ? rt(x, y) : 1.14, rh(x, y), d[1] ? rt(x, y) : 1.14, shade(p.wall, 0.6 + 0.2 * hash(x + d[0] * 7, y + d[1] * 7)));
             });
           }
           if (ch !== '#' && ch !== '@' && !(ch >= 'A' && ch <= 'Z')) {
