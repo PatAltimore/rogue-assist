@@ -146,10 +146,28 @@ window.Backdrop3D = (function () {
     g.strokeStyle = g.fillStyle = p.seal; g.shadowColor = p.seal; g.shadowBlur = 10;
     [[240, 3], [224, 1.5], [168, 2.5], [120, 1.5]].forEach(function (s) { g.lineWidth = s[1]; g.beginPath(); g.arc(0, 0, s[0], 0, 6.3); g.stroke(); });
     g.lineWidth = 1.6;
-    // a pentagram and a ring of runes
+    // a heraldic shield crossed with two swords, with a cross on the shield
+    function sword(angle) {
+      g.save(); g.rotate(angle);
+      g.beginPath();
+      g.moveTo(-6, 64); g.lineTo(-6, -138); g.lineTo(0, -166); g.lineTo(6, -138); g.lineTo(6, 64); g.closePath(); g.stroke();
+      g.beginPath(); g.moveTo(0, -130); g.lineTo(0, 40); g.stroke();                       // the fuller
+      g.beginPath(); g.moveTo(-34, 44); g.lineTo(34, 44); g.lineWidth = 5; g.stroke(); g.lineWidth = 1.8; // crossguard
+      g.beginPath(); g.moveTo(0, 64); g.lineTo(0, 96); g.stroke();                          // grip
+      g.beginPath(); g.arc(0, 104, 9, 0, 6.3); g.stroke();                                  // pommel
+      g.restore();
+    }
+    g.lineWidth = 1.8;
+    sword(-0.7); sword(0.7);
     g.beginPath();
-    for (i = 0; i < 6; i++) { var a = (i * 2 % 5) * 1.2566 - 1.5708; g.lineTo(Math.cos(a) * 168, Math.sin(a) * 168); }
-    g.closePath(); g.stroke();
+    g.moveTo(-62, -76); g.lineTo(62, -76); g.lineTo(62, 8);
+    g.quadraticCurveTo(62, 70, 0, 100); g.quadraticCurveTo(-62, 70, -62, 8); g.closePath();
+    g.lineWidth = 3; g.stroke();
+    g.lineWidth = 1.5;
+    g.beginPath(); g.moveTo(-50, -64); g.lineTo(50, -64); g.lineTo(50, 6); g.quadraticCurveTo(50, 60, 0, 86); g.quadraticCurveTo(-50, 60, -50, 6); g.closePath(); g.stroke();
+    g.lineWidth = 7;
+    g.beginPath(); g.moveTo(0, -60); g.lineTo(0, 74); g.moveTo(-40, -14); g.lineTo(40, -14); g.stroke();
+    g.lineWidth = 1.6;
     var r = rng(3);
     for (i = 0; i < 36; i++) {
       g.save(); g.rotate(i * 6.2832 / 36); g.translate(0, -232);
@@ -202,7 +220,7 @@ window.Backdrop3D = (function () {
     // embers rising from the abyss
     var dot = dotTexture();
     p.ember.forEach(function (color, k) {
-      var count = [150, 110, 80][k], pos = new Float32Array(count * 3), st = [];
+      var count = [48, 34, 24][k], pos = new Float32Array(count * 3), st = [];
       for (i = 0; i < count; i++) st.push({ x: CX + (r() - 0.5) * 120, y: -14 + r() * 30, z: CZ + (r() - 0.5) * 60, v: 0.5 + r() * 0.9, ph: r() * 6.28 });
       var geo = new T.BufferGeometry();
       geo.setAttribute('position', new T.BufferAttribute(pos, 3));
@@ -296,5 +314,5 @@ window.Backdrop3D = (function () {
     });
   }
 
-  return { init: init, setTheme: setTheme, setVisible: setVisible, background: background, update: update };
+  return { sealImage: function () { return seal && seal.material.map.image; }, init: init, setTheme: setTheme, setVisible: setVisible, background: background, update: update };
 })();
