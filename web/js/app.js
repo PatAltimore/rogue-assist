@@ -158,7 +158,7 @@
         var v = cells[r * COLS + c];
         var ch = v & 0xff;
         if (ch < 32 || ch > 126) ch = 32;
-        var cls = (v & 0x100) ? 'so' : (retro ? '' : glyphClass(ch, rowMap));
+        var cls = (v & 0x100) ? 'so' : (retro ? (rowMap && ch === 64 ? 'hero' : '') : glyphClass(ch, rowMap));
         if (r === screenState.cy && c === screenState.cx) cls = (cls ? cls + ' ' : '') + 'cur';
         if (cls !== open) {
           if (open) html += '</span>';
@@ -188,7 +188,25 @@
       screenEl.classList.toggle('at-return', !!screenState.returnPrompt);
       if (typeof syncTextOverlay === 'function') syncTextOverlay(true);
     }
+    placeHeroMark();
     followCursor();
+  }
+
+  // Over the 3D view the text layer is faint, so the hero's @ is drawn again on its own, at full
+  // brightness, throbbing in size and brightness so it is easy to find.
+  function placeHeroMark() {
+    var m = $('heroMark'), cells = screenState.cells, at = -1, i;
+    if (cells && is3d() && screenState.mapMode && !needsText()) {
+      for (i = COLS; i < (ROWS - 1) * COLS; i++) if ((cells[i] & 0xff) === 64) { at = i; break; }
+    }
+    if (at < 0) { if (!m.hidden) m.hidden = true; return; }
+    var hx = at % COLS, hy = (at / COLS) | 0, wrap = $('screenWrap'), wr = wrap.getBoundingClientRect(), rr = rowEls[hy].getBoundingClientRect();
+    m.hidden = false;
+    m.style.left = (rr.left - wr.left + wrap.scrollLeft + hx * colWidth) + 'px';
+    m.style.top = (rr.top - wr.top + wrap.scrollTop) + 'px';
+    m.style.width = colWidth + 'px';
+    m.style.height = rr.height + 'px';
+    m.style.fontSize = getComputedStyle(screenEl).fontSize;
   }
 
   var colWidth = 8;
@@ -1077,6 +1095,7 @@
     var motionOn = true;
     function applyMotion() {
       View3D.setMotion(motionOn);
+      document.documentElement.dataset.motion = motionOn ? 'on' : 'off';
       $('btnMotion').textContent = 'Motion: ' + (motionOn ? 'on' : 'off');
       $('btnMotion').setAttribute('aria-pressed', motionOn);
     }

@@ -342,3 +342,16 @@ code { font-family: var(--font-mono); background: var(--panel-2); padding: 0 4px
 
 /* "+N XP" over a monster that has just died */
 .xp-pop { position: absolute; left: 0; top: 0; z-index: 6; pointer-events: none; font: 700 1.2rem var(--font-mono); color: var(--accent); text-shadow: 0 0 3px #000, 0 0 8px #000, 0 1px 2px #000; white-space: nowrap; will-change: transform, opacity; }
+
+/* The hero's @ throbs in size and brightness so it is easy to find on the text layer. */
+.screen .hero { display: inline-block; transform-origin: 50% 60%; }
+.hero-mark { position: absolute; z-index: 5; display: flex; align-items: center; justify-content: center; font-family: var(--font-mono); font-weight: 800; line-height: 1; color: var(--accent); pointer-events: none; text-shadow: 0 0 3px #000, 0 0 6px #000; }
+.hero-mark[hidden] { display: none; }
+.mode-3d:not(.needs-text) .screen .hero { visibility: hidden; }
+/* Like the other animations, this follows the Motion button, not the system setting. */
+.screen .hero, .hero-mark { animation: heroThrob 1s ease-in-out infinite; }
+:root[data-motion="off"] .screen .hero, :root[data-motion="off"] .hero-mark { animation: none; }
+@keyframes heroThrob {
+  0%, 100% { transform: scale(1); filter: brightness(1); }
+  50% { transform: scale(1.6); filter: brightness(2); text-shadow: 0 0 6px currentColor, 0 0 12px currentColor; }
+}
