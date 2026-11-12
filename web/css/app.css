@@ -326,3 +326,13 @@ code { font-family: var(--font-mono); background: var(--panel-2); padding: 0 4px
 .view3d.collapsed #btnMotion { display: none; }
 
 .cheat-grid kbd { float: right; font: 0.72rem var(--font-mono); color: var(--muted); border: 1px solid var(--border); border-radius: 4px; padding: 0 4px; }
+
+/* Game over: the tombstone and score list stay readable, with a bar underneath. */
+.overlay.bar { inset: auto 0 0 0; display: flex; gap: 14px; align-items: center; justify-content: center; flex-wrap: wrap; padding: 10px 14px; background: rgba(8, 9, 12, 0.92); border-top: 1px solid var(--border); }
+.overlay.bar > div { display: flex; gap: 14px; align-items: center; justify-content: center; flex-wrap: wrap; }
+.overlay.bar p { margin: 0; }
+.return-bar { position: absolute; left: 0; right: 0; bottom: 0; display: flex; gap: 12px; align-items: center; justify-content: center; padding: 10px 14px; background: rgba(8, 9, 12, 0.92); border-top: 1px solid var(--border); color: var(--muted); z-index: 3; }
+.return-bar[hidden] { display: none; }
+.return-bar button { background: var(--accent); color: var(--accent-text); border-color: var(--accent); font-weight: 600; padding: 8px 16px; }
+.screen.at-return .cur { display: none; }
+.mode-3d .screen-wrap .return-bar, .mode-3d .screen-wrap .overlay.bar { pointer-events: auto; }

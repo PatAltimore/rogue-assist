@@ -47,6 +47,11 @@
 
   function sendKey(code) {
     if (exited) return;
+    if (screenState.returnPrompt) {
+      // At the closing "press return" box only Enter, Space or Escape do anything.
+      if (code !== 10 && code !== 32 && code !== 27) return;
+      code = 10;
+    }
     if (waiter) {
       var w = waiter;
       waiter = null;
@@ -65,12 +70,18 @@
     syncSaves();
     renderScreen();
     syncTextOverlay(true);
-    showOverlay('The game is over. Your save (if any) and the score list are kept in this browser.', true);
+    // The tombstone and score list stay on screen; a bar underneath offers a new game.
+    screenState.returnPrompt = false;
+    $('screen').classList.add('at-return');
+    $('returnText').textContent = 'Game over. Your score is on the list and kept in this browser.';
+    $('btnReturn').textContent = 'Start a new game';
+    $('returnBar').hidden = false;
   }
 
   function showOverlay(text, withButton) {
     $('overlayText').textContent = text;
     $('btnOverlayNew').hidden = !withButton;
+    $('overlay').classList.toggle('bar', !!withButton);
     $('overlay').hidden = false;
   }
 
@@ -155,6 +166,21 @@
         rowCache[r] = html;
       }
     }
+    // Rogue ends with a "[Press return to continue]" line that wants typed input; spot it so the
+    // page can offer a button instead and not echo stray keys into the box.
+    var wasReturn = screenState.returnPrompt;
+    var rp = false;
+    for (r = ROWS - 1; r >= 0 && !rp; r--) {
+      var line = '';
+      for (c = 0; c < COLS; c++) { var cc = cells[r * COLS + c] & 0xff; line += cc >= 32 && cc < 127 ? String.fromCharCode(cc) : ' '; }
+      if (/Press return to continue/i.test(line)) rp = true;
+    }
+    screenState.returnPrompt = rp && !exited;
+    if (screenState.returnPrompt !== wasReturn) {
+      $('returnBar').hidden = !screenState.returnPrompt;
+      screenEl.classList.toggle('at-return', !!screenState.returnPrompt);
+      if (typeof syncTextOverlay === 'function') syncTextOverlay(true);
+    }
     followCursor();
   }
 
@@ -225,6 +251,7 @@
 
   document.addEventListener('keydown', function (e) {
     if (isTyping(e) || e.ctrlKey || e.metaKey) return;
+    if (exited && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); $('btnOverlayNew').click(); return; }
     if (walker && e.key !== 'Shift' && e.key !== 'Alt') cancelWalk();
     if (mode === 'walk' && ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].indexOf(e.key) >= 0) {
       walkArrow(e);
@@ -912,7 +939,7 @@
   // In 3D mode the text screen shows only when the game wants more than a
   // command: a menu, the inventory, help, the tombstone, and so on.
   function needsText() {
-    if (exited || !gameRunning) return true;
+    if (exited || !gameRunning || screenState.returnPrompt) return true;
     if (call('at_prompt')) return false;
     return !!call('text_overlay') || !screenState.mapMode;
   }
@@ -1059,6 +1086,7 @@
   $('btnSmaller').addEventListener('click', function () { zoom(1 / 1.15); });
   $('btnBigger').addEventListener('click', function () { zoom(1.15); });
   $('btnNew').addEventListener('click', newGame);
+  $('btnReturn').addEventListener('click', function () { if (exited) $('btnOverlayNew').click(); else sendKey(10); });
   $('btnOverlayNew').addEventListener('click', function () {
     try { if (Module.FS.analyzePath('/data/rogue.save').exists) Module.FS.unlink('/data/rogue.save'); } catch (e) { /* none */ }
     Module.FS.syncfs(false, function () { location.reload(); });
