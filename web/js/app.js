@@ -561,7 +561,7 @@
       cell('Level', s.level + (s.maxLevel > s.level ? ' (max ' + s.maxLevel + ')' : '')) +
       cell('Gold', s.gold) + cell('Armor', s.ac) +
       cell('Str', s.str + (s.maxStr !== s.str ? ' / ' + s.maxStr : '')) +
-      cell('XP level', s.xpLevel) + cell('Hunger', hungerText) +
+      cell('XP level', s.xpLevel) + cell('XP points', s.xp) + cell('Hunger', hungerText) +
       '</div>' + (s.cheated ? '<p class="muted">Practice run: you used a cheat, so no high score.</p>' : '');
 
     $('advice').innerHTML = advise(s).map(function (t) {
@@ -1014,7 +1014,7 @@
     $('hudStatus').innerHTML = '<div class="hud-status">' +
       '<span class="' + (pct <= 0.3 ? 'low' : '') + '">HP ' + s.hp + '/' + s.maxHp + '</span>' +
       '<span>Lvl ' + s.level + '</span><span>Gold ' + s.gold + '</span><span>Arm ' + s.ac + '</span>' +
-      '<span>Str ' + s.str + '</span><span>XP ' + s.xpLevel + '</span>' +
+      '<span>Str ' + s.str + '</span><span title="Experience level / experience points">XP ' + s.xpLevel + ' / ' + s.xp + '</span>' +
       (hunger ? '<span class="low">' + hunger + '</span>' : '') + '</div>';
   }
 
