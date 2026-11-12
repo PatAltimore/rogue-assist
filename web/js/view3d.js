@@ -154,12 +154,12 @@ window.View3D = (function () {
     camera.updateProjectionMatrix();
     scene.background.set(walk ? p.haze : p.bg);
     scene.fog.color.set(walk ? p.haze : p.bg);
-    scene.fog.near = walk ? 0.4 : 16;
-    scene.fog.far = walk ? 5.2 : 46;
+    scene.fog.near = walk ? 1.4 : 16;
+    scene.fog.far = walk ? 6.5 : 46;
     heroLight.intensity = walk ? 1.4 : 1.1;
     ambient.intensity = walk ? 0.45 : 0.6;
     sun.intensity = walk ? 0.3 : 0.65;
-    heroLight.distance = walk ? 6 : 14;
+    heroLight.distance = walk ? 10 : 14;
     state.dirty = true;
   }
 
@@ -347,21 +347,21 @@ window.View3D = (function () {
               var ny = y + d[1], nx = x + d[0];
               if (ny < 1 || ny > ROWS - 2 || nx < 0 || nx >= COLS || data.grid[ny][nx]) return;
               if (links === 1 && known(y - d[1], x - d[0])) {
-                // The explored end: carry on a few squares that sink into the haze, then the veil.
-                place(passes, nP - 1, x, -0.04, y, 0.94, 0.1, 0.94, toHaze(shade(p.pass, v), 0.45, p));
-                // ...but stop short of anything already on the map (a room wall, another corridor).
+                // The explored end: carry on with plain squares until the fog has swallowed them, so
+                // the fade follows the player's distance (nothing changes colour as you walk).
+                // Stop short of anything already on the map (a room wall, another corridor).
                 var room = 0;
-                while (room < 3) {
+                while (room < 7) {
                   var ry = y + d[1] * (room + 1), rx = x + d[0] * (room + 1);
                   if (ry < 1 || ry > ROWS - 2 || rx < 0 || rx >= COLS || data.grid[ry][rx]) break;
                   room++;
                 }
                 for (var gi = 1; gi <= room; gi++) {
-                  var k = Math.min(1, 0.7 + 0.3 * gi / room), gx = x + d[0] * gi, gy = y + d[1] * gi;
+                  var gx = x + d[0] * gi, gy = y + d[1] * gi, gv = 0.86 + 0.28 * hash(gx, gy);
                   cellPass[nP] = undefined;
-                  place(passes, nP++, gx, -0.04, gy, 0.94, 0.1, 0.94, toHaze(shade(p.pass, 0.9), k, p));
+                  place(passes, nP++, gx, -0.04, gy, 0.94, 0.1, 0.94, shade(p.pass, gv));
                   [-1, 1].forEach(function (sd) {
-                    place(rocks, nR++, gx - d[1] * sd * 0.5, 0.65, gy + d[0] * sd * 0.5, d[0] ? 1.14 : 0.14, 1.3, d[1] ? 1.14 : 0.14, toHaze(shade(p.wall, 0.65), k, p));
+                    place(rocks, nR++, gx - d[1] * sd * 0.5, 0.65, gy + d[0] * sd * 0.5, d[0] ? 1.14 : 0.14, 1.3, d[1] ? 1.14 : 0.14, shade(p.wall, 0.6 + 0.2 * hash(gx + nR, gy)));
                   });
                 }
                 veil(x, y, d[0], d[1], room + 0.1);
