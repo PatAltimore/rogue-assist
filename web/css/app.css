@@ -322,3 +322,5 @@ code { font-family: var(--font-mono); background: var(--panel-2); padding: 0 4px
 
 /* display: grid above would otherwise override the hidden attribute and leave an invisible layer over the canvas */
 .view3d-msg[hidden] { display: none; }
+
+.view3d.collapsed #btnMotion { display: none; }

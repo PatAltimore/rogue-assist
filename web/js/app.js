@@ -956,6 +956,16 @@
     $('modeText').addEventListener('click', function () { setMode('2d'); });
     $('mode3d').addEventListener('click', function () { setMode('3d'); });
     $('modeWalk').addEventListener('click', function () { setMode('walk'); });
+    // Animations follow the system's reduce-motion setting until you choose here.
+    var sysReduce = !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
+    var motionOn = store.get('rogue-motion', sysReduce ? '0' : '1') === '1';
+    function applyMotion() {
+      View3D.setMotion(motionOn);
+      $('btnMotion').textContent = 'Motion: ' + (motionOn ? 'on' : 'off');
+      $('btnMotion').setAttribute('aria-pressed', motionOn);
+    }
+    $('btnMotion').addEventListener('click', function () { motionOn = !motionOn; store.set('rogue-motion', motionOn ? '1' : '0'); applyMotion(); });
+    applyMotion();
     View3D.onTap(handleTap);
     $('ovOpacity').addEventListener('input', function () { applyOv(true); });
     setMode(mode);

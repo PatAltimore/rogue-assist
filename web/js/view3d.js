@@ -234,8 +234,64 @@ window.View3D = (function () {
     // Face the hero.
     if (hero) g.rotation.y = Math.atan2(hero.x - x, hero.y - y);
     dynamic.add(g);
-    var flies = g.userData && g.userData.flies;
-    anim.push({ obj: g, base: 0, phase: hash(x, y) * 6.28, wobble: true, flies: !!flies, wings: [g.getObjectByName('wingL'), g.getObjectByName('wingR')] });
+    var rig = g.getObjectByName('rig') || g;
+    var part = function (n) { var o = g.getObjectByName(n); return o ? { o: o, rx: o.rotation.x, ry: o.rotation.y, rz: o.rotation.z } : null; };
+    anim.push({
+      monster: true, rig: rig, style: (g.userData && g.userData.style) || 'fighter', phase: hash(x, y) * 6.28,
+      armL: part('armL'), armR: part('armR'), jaw: part('jaw'), tail: part('tail'),
+      wings: [g.getObjectByName('wingL'), g.getObjectByName('wingR')]
+    });
+  }
+
+  // Moving parts of scenery: the arrow over the stairs bounces and spins, trap spikes stab.
+  function animateProp(obj, x, y) {
+    var arrow = obj.getObjectByName('arrow'), spikes = obj.getObjectByName('spikes');
+    if (arrow) anim.push({ obj: arrow, base: arrow.position.y, phase: hash(x, y) * 6.28, spin: true, hop: 0.12 });
+    if (spikes) anim.push({ spikes: spikes, phase: hash(x, y) * 6.28 });
+  }
+
+  // The fighting stance: a springy bounce with squash and stretch, a forward lean,
+  // weight shifting from side to side, arms pumping, jaws snapping and tails lashing.
+  function animateMonster(a, t) {
+    var r = a.rig, th = t * 5.2 + a.phase, slow = th * 0.5;
+    var up = Math.abs(Math.sin(th)), s = Math.sin(th), sw = Math.sin(slow);
+    if (a.style === 'fly') {
+      r.position.y = Math.sin(t * 3 + a.phase) * 0.1;
+      r.position.z = sw * 0.1;
+      r.rotation.x = 0.25 + s * 0.08;
+      r.rotation.z = sw * 0.12;
+    } else if (a.style === 'slither') {
+      r.rotation.y = sw * 0.35;
+      r.position.z = Math.max(0, Math.sin(slow * 1.5)) * 0.12; // little strikes
+      r.rotation.x = Math.max(0, Math.sin(slow * 1.5)) * 0.18;
+      r.scale.y = 1 + s * 0.04;
+    } else if (a.style === 'float') {
+      r.position.y = 0.08 + Math.sin(t * 2 + a.phase) * 0.08;
+      r.position.z = Math.max(0, sw) * 0.14; // lunges
+      r.rotation.x = 0.15 + Math.max(0, sw) * 0.15;
+      r.rotation.z = Math.sin(t * 1.3 + a.phase) * 0.08;
+    } else if (a.style === 'plant') {
+      r.rotation.z = sw * 0.14;
+      r.rotation.x = 0.1 + s * 0.08;
+      r.scale.y = 1 + s * 0.04;
+    } else {
+      r.position.y = up * 0.08;
+      r.scale.y = 1 + (up - 0.5) * 0.09;
+      r.scale.x = r.scale.z = 1 - (up - 0.5) * 0.045;
+      r.rotation.x = 0.13 + s * 0.04;
+      r.position.x = sw * 0.05;
+      r.position.z = Math.sin(slow + 1) * 0.05;
+      r.rotation.z = sw * 0.045;
+      r.rotation.y = sw * 0.14;
+    }
+    if (a.armL) a.armL.o.rotation.x = a.armL.rx + s * 0.28;
+    if (a.armR) a.armR.o.rotation.x = a.armR.rx - s * 0.28;
+    if (a.jaw) a.jaw.o.rotation.x = a.jaw.rx + (a.style === 'plant' ? -1 : 1) * Math.pow(Math.max(0, Math.sin(slow * 1.7)), 3) * 0.5;
+    if (a.tail) a.tail.o.rotation.y = a.tail.ry + Math.sin(th * 0.8) * 0.4;
+    if (a.wings[0]) {
+      var flap = Math.sin(t * (a.style === 'fly' ? 13 : 4) + a.phase) * (a.style === 'fly' ? 0.75 : 0.3);
+      a.wings[0].rotation.z = -flap; a.wings[1].rotation.z = flap;
+    }
   }
 
   // data: { grid[y][x] -> char code (0 = unexplored), hero:{x,y}, level, monsters:[{ch,x,y}], stairs:{x,y}|null }
@@ -292,9 +348,9 @@ window.View3D = (function () {
             frontierMeshes.push(mk);
           }
         } else if (ch === '%') {
-          addAt(Models3D.stairs(), x, 0, y, 0);
+          animateProp(addAt(Models3D.stairs(), x, 0, y, 0), x, y);
         } else if (ch === '^') {
-          addAt(Models3D.trap(), x, 0, y, 0);
+          animateProp(addAt(Models3D.trap(), x, 0, y, 0), x, y);
         } else {
           var it = Models3D.item(ch, hash(x + 7, y + 3));
           if (it) { it.scale.set(1.4, 1.4, 1.4); addAt(it, x, 0.1, y, 2); }
@@ -302,7 +358,7 @@ window.View3D = (function () {
       }
     }
     if (data.stairs && !data.grid[data.stairs.y][data.stairs.x] ) {
-      addAt(Models3D.stairs(), data.stairs.x, 0, data.stairs.y, 0);
+      animateProp(addAt(Models3D.stairs(), data.stairs.x, 0, data.stairs.y, 0), data.stairs.x, data.stairs.y);
       var beam = mesh(new T.CylinderGeometry(0.12, 0.12, 6, 8), p.stairs, { emissive: p.stairs });
       beam.material.transparent = true;
       beam.material.opacity = 0.35;
@@ -371,17 +427,12 @@ window.View3D = (function () {
     if (!state.reduceMotion) {
       for (var i = 0; i < anim.length; i++) {
         var a = anim[i];
-        if (a.wobble) {
-          a.obj.rotation.z = Math.sin(t * 3 + a.phase) * (a.flies ? 0.03 : 0.07);
-          if (a.flies) a.obj.position.y = Math.sin(t * 2.4 + a.phase) * 0.08;
-          if (a.wings && a.wings[0]) {
-            var flap = Math.sin(t * (a.flies ? 12 : 4) + a.phase) * (a.flies ? 0.7 : 0.25);
-            a.wings[0].rotation.z = -flap; a.wings[1].rotation.z = flap;
-          }
-        }
+        if (a.monster) animateMonster(a, t);
+        else if (a.spikes) a.spikes.position.y = -0.2 + Math.pow(Math.max(0, Math.sin(t * 2.2 + a.phase)), 0.5) * 0.22;
         else {
-          a.obj.position.y = a.base + Math.sin(t * 2 + a.phase) * 0.06;
-          if (a.spin) a.obj.rotation.y = t + a.phase;
+          // Items hop and spin so they catch the eye.
+          a.obj.position.y = a.base + Math.abs(Math.sin(t * 2.6 + a.phase)) * (a.hop || 0.16);
+          if (a.spin) a.obj.rotation.y = t * 1.8 + a.phase;
         }
       }
       var pulse = 1 + Math.sin(t * 4) * 0.12;
@@ -525,6 +576,7 @@ window.View3D = (function () {
     isOk: function () { return state.ok; },
     setVisible: function (v) { state.visible = !!v; state.dirty = true; if (v) resize(); },
     setTheme: function (t) { state.theme = t === 'retro' ? 'retro' : 'modern'; applyTheme(); },
+    setMotion: function (on) { state.reduceMotion = !on; state.dirty = true; },
     setView: function (v) { state.view = v === 'walk' ? 'walk' : 'orbit'; applyView(); },
     getFacing: getFacing,
     setFacing: setFacing,
