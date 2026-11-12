@@ -916,6 +916,7 @@
     return t.replace(/\s+$/, '');
   }
 
+  var moreTimer = 0;
   function updateHud(s) {
     if (!is3d()) return;
     var text = textShown ? '' : row0Text();
@@ -931,10 +932,14 @@
       var t = escapeHtml(m.text.replace(/--More--/, '').trim());
       return t ? '<div class="hud-line' + (last ? '' : ' old') + '">' + t + '</div>' : '';
     }).join('');
-    if (more) html += '<div><button class="hud-line hud-more" id="hudMore">Continue (Space)</button></div>';
     $('hudMsg').innerHTML = html;
-    var more_ = $('hudMore');
-    if (more_) more_.addEventListener('click', function () { sendKey(32); });
+    // The message stays in the log above, so --More-- is dismissed automatically after a moment.
+    if (more && !moreTimer) {
+      moreTimer = setTimeout(function () {
+        moreTimer = 0;
+        if (is3d() && gameRunning && !exited && /--More--/.test(row0Text())) sendKey(32);
+      }, 450);
+    }
     clearTimeout(hudTimer);
     if (shown.length) hudTimer = setTimeout(function () { if (lastState) updateHud(lastState); }, 12100);
 
