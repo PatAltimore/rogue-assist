@@ -552,12 +552,21 @@ window.Models3D = (function () {
     return protoCache[key].clone();
   }
 
+  // A straight flight of steps with side rails, and a bouncing arrow showing the way down.
   function stairs() {
     if (!protoCache.stairs) {
-      var g = new T.Group();
-      add(g, geo('b', 0.9, 0.06, 0.9), 0x15171f, { p: [0, 0.03, 0] });
-      for (var i = 0; i < 4; i++) add(g, geo('b', 0.8 - i * 0.14, 0.08, 0.8 - i * 0.14), 0xe6c35a, { p: [0, 0.1 + i * 0.07, 0], e: 0x3a3010 });
-      add(g, geo('k', 0.1, 0.22), 0xffe680, { p: [0, 0.55, 0], r: [Math.PI, 0, 0], e: 0x806a20, n: 'arrow' });
+      var g = new T.Group(), n = 5;
+      add(g, geo('b', 0.92, 0.04, 0.92), 0x15171f, { p: [0, 0.02, 0] });
+      for (var i = 0; i < n; i++) {
+        var top = 0.1 + i * 0.1;
+        add(g, geo('b', 0.66, top, 0.15), i % 2 ? 0xd9b84e : 0xe6c35a, { p: [0, top / 2, 0.32 - i * 0.16], e: 0x3a3010 });
+        add(g, geo('b', 0.66, 0.02, 0.03), 0xfff0b0, { p: [0, top + 0.005, 0.32 - i * 0.16 + 0.065] }); // the lit edge of each step
+      }
+      [-1, 1].forEach(function (s) {
+        add(g, geo('b', 0.07, 0.62, 0.82), 0x8a7a50, { p: [s * 0.38, 0.28, -0.02] });
+        add(g, geo('b', 0.07, 0.07, 0.82), 0xb8a468, { p: [s * 0.38, 0.62, -0.02] });
+      });
+      add(g, geo('k', 0.1, 0.22), 0xffe680, { p: [0, 0.95, 0.1], r: [Math.PI, 0, 0], e: 0x806a20, n: 'arrow' });
       protoCache.stairs = g;
     }
     return protoCache.stairs.clone();

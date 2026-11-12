@@ -202,6 +202,7 @@ var RogueData = (function () {
     ['/', 'Identify a character on screen'],
     ['f + direction', 'Fight until one of you dies'],
     ['F + direction', 'Fight to the death'],
+    ['Alt + letter', 'Cheats, shown on the Cheats tab (for example Alt+H heals)'],
     ['v', 'Version'],
     ['S', 'Save and quit'],
     ['Q', 'Quit (you lose the game)']

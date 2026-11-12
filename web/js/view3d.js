@@ -24,7 +24,7 @@ window.View3D = (function () {
     ok: false, visible: false, theme: 'modern', reduceMotion: false,
     yaw: 0, pitch: 0.95, dist: 13, level: -1, hero: { x: 0, y: 0 }, heroShown: null,
     dirty: true, last: 0,
-    view: 'orbit', walk: { yaw: 0, target: 0 }
+    view: 'orbit', walk: { yaw: 0, target: 0 }, heroFace: 0
   };
   var T, renderer, scene, camera, stage, canvas;
   var walls, floors, passes, rocks, ceiling, dynamic, hero, heroLight, fog, ambient, sun;
@@ -379,6 +379,9 @@ window.View3D = (function () {
       state.level = data.level;
       state.heroShown = null;
     }
+    // The avatar turns to face the way it last moved.
+    var mx = data.hero.x - state.hero.x, my = data.hero.y - state.hero.y;
+    if ((mx || my) && Math.abs(mx) <= 1 && Math.abs(my) <= 1) state.heroFace = Math.atan2(mx, my);
     state.hero = data.hero;
     state.dirty = true;
   }
@@ -397,6 +400,9 @@ window.View3D = (function () {
     state.heroShown.y += (state.hero.y - state.heroShown.y) * k;
     var moving = Math.abs(state.hero.x - state.heroShown.x) + Math.abs(state.hero.y - state.heroShown.y) > 0.002;
     hero.position.set(state.heroShown.x, 0, state.heroShown.y);
+    var turnBy = wrap(state.heroFace - hero.rotation.y);
+    hero.rotation.y += state.reduceMotion ? turnBy : turnBy * Math.min(1, dt * 12);
+    if (Math.abs(turnBy) > 0.01) moving = true;
     heroLight.position.set(state.heroShown.x, 1.8, state.heroShown.y);
     if (state.view === 'walk') {
       var w = state.walk, wk = state.reduceMotion ? 1 : Math.min(1, dt * 10);

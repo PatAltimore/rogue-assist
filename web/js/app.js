@@ -231,7 +231,16 @@
       e.preventDefault();
       return;
     }
-    if (e.altKey) return;
+    if (e.altKey) {
+      // Alt + letter runs a cheat (the letters are shown on the Cheats tab).
+      var letter = /^Key([A-Z])$/.exec(e.code || '');
+      var cheat = letter && CHEATS.filter(function (c) { return c[3] === letter[1]; })[0];
+      if (cheat && !e.shiftKey) {
+        e.preventDefault();
+        if (gameRunning && !exited) sendKey(CHEAT_BASE + cheat[0]);
+      }
+      return;
+    }
     var ae = document.activeElement;
     if (ae && ae.tagName === 'BUTTON' && (e.key === ' ' || e.key === 'Enter')) {
       // Buttons elsewhere keep their keyboard activation; in the game pane Space
@@ -721,22 +730,23 @@
     }).join('');
   }
 
+  // code, name, what it does, Alt+key
   var CHEATS = [
-    [1, 'Heal', 'Full hit points'],
-    [2, 'Feed', 'Not hungry any more'],
-    [3, 'Restore strength', 'Back to your maximum'],
-    [4, 'Raise level', 'One experience level'],
-    [5, 'Descend', 'Jump to the next level'],
-    [6, 'Ascend', 'Go up a level'],
-    [7, 'Reveal map', 'Map the whole level'],
-    [8, 'Identify all', 'Every potion, scroll, ring, wand'],
-    [9, 'Add 500 gold', 'Straight to your purse'],
-    [10, 'Regenerate level', 'New layout, same depth']
+    [1, 'Heal', 'Full hit points', 'H'],
+    [2, 'Feed', 'Not hungry any more', 'F'],
+    [3, 'Restore strength', 'Back to your maximum', 'S'],
+    [4, 'Raise level', 'One experience level', 'L'],
+    [5, 'Descend', 'Jump to the next level', 'D'],
+    [6, 'Ascend', 'Go up a level', 'A'],
+    [7, 'Reveal map', 'Map the whole level', 'M'],
+    [8, 'Identify all', 'Every potion, scroll, ring, wand', 'I'],
+    [9, 'Add 500 gold', 'Straight to your purse', 'G'],
+    [10, 'Regenerate level', 'New layout, same depth', 'R']
   ];
 
   function setupCheats() {
     $('cheatGrid').innerHTML = CHEATS.map(function (c) {
-      return '<button data-cheat="' + c[0] + '">' + c[1] + '<small>' + c[2] + '</small></button>';
+      return '<button data-cheat="' + c[0] + '">' + c[1] + ' <kbd>Alt+' + c[3] + '</kbd><small>' + c[2] + '</small></button>';
     }).join('');
     $('cheatGrid').addEventListener('click', function (e) {
       var b = e.target.closest('button');
@@ -956,15 +966,14 @@
     $('modeText').addEventListener('click', function () { setMode('2d'); });
     $('mode3d').addEventListener('click', function () { setMode('3d'); });
     $('modeWalk').addEventListener('click', function () { setMode('walk'); });
-    // Animations follow the system's reduce-motion setting until you choose here.
-    var sysReduce = !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
-    var motionOn = store.get('rogue-motion', sysReduce ? '0' : '1') === '1';
+    // Animation always starts on; the button turns it off for this visit.
+    var motionOn = true;
     function applyMotion() {
       View3D.setMotion(motionOn);
       $('btnMotion').textContent = 'Motion: ' + (motionOn ? 'on' : 'off');
       $('btnMotion').setAttribute('aria-pressed', motionOn);
     }
-    $('btnMotion').addEventListener('click', function () { motionOn = !motionOn; store.set('rogue-motion', motionOn ? '1' : '0'); applyMotion(); });
+    $('btnMotion').addEventListener('click', function () { motionOn = !motionOn; applyMotion(); });
     applyMotion();
     View3D.onTap(handleTap);
     $('ovOpacity').addEventListener('input', function () { applyOv(true); });
