@@ -1014,7 +1014,7 @@
     $('hudStatus').innerHTML = '<div class="hud-status">' +
       '<span class="' + (pct <= 0.3 ? 'low' : '') + '">HP ' + s.hp + '/' + s.maxHp + '</span>' +
       '<span>Lvl ' + s.level + '</span><span>Gold ' + s.gold + '</span><span>Arm ' + s.ac + '</span>' +
-      '<span>Str ' + s.str + '</span><span title="Experience level / experience points">XP ' + s.xpLevel + ' / ' + s.xp + '</span>' +
+      '<span>Str ' + s.str + '</span><span title="Experience level and experience points">XP Lv ' + s.xpLevel + ' &middot; ' + s.xp + ' pts</span>' +
       (hunger ? '<span class="low">' + hunger + '</span>' : '') + '</div>';
   }
 
