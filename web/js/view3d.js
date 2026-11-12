@@ -9,12 +9,12 @@ window.View3D = (function () {
 
   var PALETTES = {
     modern: {
-      haze: 0x131416, mist: 0x74777f, bg: 0x0b0c10, wall: 0x7a8296, wallTop: 0x9aa3b8, floor: 0x2f3547, pass: 0x6a604f, door: 0xd79b4a,
+      haze: 0x000000, bg: 0x0b0c10, wall: 0x7a8296, wallTop: 0x9aa3b8, floor: 0x2f3547, pass: 0x6a604f, door: 0xd79b4a,
       stairs: 0xffd166, gold: 0xf4d03f, potion: 0x4fd1c5, scroll: 0xf1ead2, food: 0xa6e36e, weapon: 0xc9d1de,
       armor: 0x7f9cc4, magic: 0xb690ff, trap: 0xff6b4a, mon: 0xff5d5d, hero: 0xffffff, frontier: 0xe3aa4c
     },
     retro: {
-      haze: 0x05160a, mist: 0x2fb356, bg: 0x020502, wall: 0x2faa4a, wallTop: 0x4cff6e, floor: 0x0b2a12, pass: 0x17602a, door: 0x4cff6e,
+      haze: 0x000000, bg: 0x020502, wall: 0x2faa4a, wallTop: 0x4cff6e, floor: 0x0b2a12, pass: 0x17602a, door: 0x4cff6e,
       stairs: 0xb6ffc4, gold: 0x4cff6e, potion: 0x4cff6e, scroll: 0x4cff6e, food: 0x4cff6e, weapon: 0x4cff6e,
       armor: 0x4cff6e, magic: 0x4cff6e, trap: 0xb6ffc4, mon: 0xb6ffc4, hero: 0xffffff, frontier: 0xb6ffc4
     }
@@ -154,12 +154,12 @@ window.View3D = (function () {
     camera.updateProjectionMatrix();
     scene.background.set(walk ? p.haze : p.bg);
     scene.fog.color.set(walk ? p.haze : p.bg);
-    scene.fog.near = walk ? 1.0 : 16;
-    scene.fog.far = walk ? 7 : 46;
+    scene.fog.near = walk ? 0.4 : 16;
+    scene.fog.far = walk ? 5.2 : 46;
     heroLight.intensity = walk ? 1.4 : 1.1;
     ambient.intensity = walk ? 0.45 : 0.6;
     sun.intensity = walk ? 0.3 : 0.65;
-    heroLight.distance = walk ? 12 : 14;
+    heroLight.distance = walk ? 6 : 14;
     state.dirty = true;
   }
 
@@ -223,62 +223,12 @@ window.View3D = (function () {
     return m;
   }
 
-  // Unexplored ground ends in a faint drifting haze rather than a black wall: a panel the
-  // colour of the fog stops anything showing through, and slow glowing mist floats in front of it.
+  // Unexplored ground is plain black: a black panel stands across the way on so nothing shows through.
   var veilKit = null;
-  function mistTexture() {
-    var S = 128, c = document.createElement('canvas');
-    c.width = c.height = S;
-    var g = c.getContext('2d'), i;
-    g.clearRect(0, 0, S, S);
-    for (i = 0; i < 26; i++) {
-      var x = (i * 53 % 100) / 100 * S, y = (i * 37 % 100) / 100 * S, r = 22 + (i * 17 % 30);
-      [-S, 0, S].forEach(function (dx) {
-        var gr = g.createRadialGradient(x + dx, y, 0, x + dx, y, r);
-        gr.addColorStop(0, 'rgba(255,255,255,0.5)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
-        g.fillStyle = gr; g.fillRect(0, 0, S, S);
-      });
-    }
-    var t = new T.CanvasTexture(c);
-    t.wrapS = t.wrapT = T.RepeatWrapping;
-    t.repeat.set(1.5, 1);
-    return t;
-  }
-
-  // A round soft-edged mask so the mist panels have no visible rectangle.
-  function softEdge() {
-    var S = 64, c = document.createElement('canvas');
-    c.width = c.height = S;
-    var g = c.getContext('2d'), gr = g.createRadialGradient(S / 2, S / 2, 0, S / 2, S / 2, S / 2);
-    gr.addColorStop(0, '#fff'); gr.addColorStop(0.35, '#777'); gr.addColorStop(0.75, '#111'); gr.addColorStop(1, '#000');
-    g.fillStyle = gr; g.fillRect(0, 0, S, S);
-    return new T.CanvasTexture(c);
-  }
-
   function veil(x, y, dx, dy, dist) {
-    var p = pal();
-    if (!veilKit || veilKit.theme !== state.theme) {
-      var tex = mistTexture(), tex2 = tex.clone();
-      tex2.needsUpdate = true;
-      tex2.repeat.set(1, 1.3);
-      veilKit = {
-        theme: state.theme, tex: tex, tex2: tex2,
-        box: new T.MeshBasicMaterial({ color: p.haze }),
-        mist: new T.MeshBasicMaterial({ color: p.mist, map: tex, alphaMap: softEdge(), transparent: true, opacity: 0.6, fog: false, depthWrite: false, blending: T.AdditiveBlending, side: T.DoubleSide }),
-        boxGeo: [new T.BoxGeometry(0.2, 4, 3.4), new T.BoxGeometry(3.4, 4, 0.2)],
-        mist2: new T.MeshBasicMaterial({ color: p.mist, map: tex2, alphaMap: softEdge(), transparent: true, opacity: 0.6, fog: false, depthWrite: false, blending: T.AdditiveBlending, side: T.DoubleSide }),
-        plane: new T.PlaneGeometry(1.7, 2.0)
-      };
-    }
-    var grp = new T.Group();
-    grp.add(new T.Mesh(veilKit.boxGeo[dx ? 0 : 1], veilKit.box));
-    [0.35, 0.7].forEach(function (back, k) {
-      var pl = new T.Mesh(veilKit.plane, k ? veilKit.mist2 : veilKit.mist);
-      pl.position.set(-dx * back, -0.1 + k * 0.2, -dy * back);
-      if (dx) pl.rotation.y = Math.PI / 2;
-      grp.add(pl);
-    });
-    addAt(grp, x + dx * (dist || 1.6), 1.0, y + dy * (dist || 1.6), 0);
+    if (!veilKit) veilKit = { mat: new T.MeshBasicMaterial({ color: 0x000000 }), geo: [new T.BoxGeometry(0.2, 4, 3.4), new T.BoxGeometry(3.4, 4, 0.2)] };
+    var m = new T.Mesh(veilKit.geo[dx ? 0 : 1], veilKit.mat);
+    addAt(m, x + dx * (dist || 1.6), 1.0, y + dy * (dist || 1.6), 0);
   }
 
   function addAt(obj, x, y, z, bob) {
@@ -398,7 +348,7 @@ window.View3D = (function () {
               if (ny < 1 || ny > ROWS - 2 || nx < 0 || nx >= COLS || data.grid[ny][nx]) return;
               if (links === 1 && known(y - d[1], x - d[0])) {
                 // The explored end: carry on a few squares that sink into the haze, then the veil.
-                place(passes, nP - 1, x, -0.04, y, 0.94, 0.1, 0.94, toHaze(shade(p.pass, v), 0.2, p));
+                place(passes, nP - 1, x, -0.04, y, 0.94, 0.1, 0.94, toHaze(shade(p.pass, v), 0.45, p));
                 // ...but stop short of anything already on the map (a room wall, another corridor).
                 var room = 0;
                 while (room < 3) {
@@ -407,7 +357,7 @@ window.View3D = (function () {
                   room++;
                 }
                 for (var gi = 1; gi <= room; gi++) {
-                  var k = gi / (room + 0.3), gx = x + d[0] * gi, gy = y + d[1] * gi;
+                  var k = Math.min(1, 0.7 + 0.3 * gi / room), gx = x + d[0] * gi, gy = y + d[1] * gi;
                   cellPass[nP] = undefined;
                   place(passes, nP++, gx, -0.04, gy, 0.94, 0.1, 0.94, toHaze(shade(p.pass, 0.9), k, p));
                   [-1, 1].forEach(function (sd) {
@@ -541,13 +491,6 @@ window.View3D = (function () {
           a.obj.position.y = a.base + Math.abs(Math.sin(t * 2.6 + a.phase)) * (a.hop || 0.16);
           if (a.spin) a.obj.rotation.y = t * 1.8 + a.phase;
         }
-      }
-      if (veilKit) { // slow drifting, in opposite directions, and a gentle breathing
-        veilKit.tex.offset.x = t * 0.05;
-        veilKit.tex.offset.y = Math.sin(t * 0.5) * 0.12;
-        veilKit.tex2.offset.x = -t * 0.035;
-        veilKit.tex2.offset.y = t * 0.02;
-        veilKit.mist.opacity = veilKit.mist2.opacity = 0.55 + Math.sin(t * 1.3) * 0.3;
       }
       var pulse = 1 + Math.sin(t * 4) * 0.12;
       for (var j = 0; j < frontierMeshes.length; j++) frontierMeshes[j].scale.set(pulse, pulse, pulse);
