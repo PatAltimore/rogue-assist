@@ -792,6 +792,7 @@ window.View3D = (function () {
     command: command,
     isOk: function () { return state.ok; },
     death: death,
+    getYaw: function () { return state.yaw; },
     setVisible: function (v) { state.visible = !!v; state.dirty = true; if (v) resize(); },
     setTheme: function (t) { state.theme = t === 'retro' ? 'retro' : 'modern'; applyTheme(); },
     setMotion: function (on) { state.reduceMotion = !on; state.dirty = true; },

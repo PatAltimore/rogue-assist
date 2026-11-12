@@ -236,10 +236,25 @@
     $('btnRun').classList.toggle('on', on);
   }
 
-  var DIR_KEYS = { h: 1, j: 1, k: 1, l: 1, y: 1, u: 1, b: 1, n: 1 };
+  var DIR_LETTERS = { h: 1, j: 1, k: 1, l: 1, y: 1, u: 1, b: 1, n: 1 };
+
+  // In the overhead 3D view the camera can be turned, so "up" on the screen is not always
+  // north. Arrows and the d-pad mean what they look like on screen: this turns a screen
+  // direction into the game's map direction for the current camera angle.
+  var SCREEN_VEC = { h: [-1, 0], l: [1, 0], k: [0, 1], j: [0, -1], y: [-1, 1], u: [1, 1], b: [-1, -1], n: [1, -1] };
+  var MAP_BY_ANGLE = ['l', 'n', 'j', 'b', 'h', 'y', 'k', 'u']; // east, then clockwise in 45 degree steps
+  function viewDir(letter) {
+    if (mode !== '3d' || !window.View3D || !View3D.getYaw || !SCREEN_VEC[letter]) return letter;
+    var yaw = View3D.getYaw(), v = SCREEN_VEC[letter];
+    var mx = Math.cos(yaw) * v[0] - Math.sin(yaw) * v[1];        // right * sx + up * sy, in map coordinates
+    var my = -Math.sin(yaw) * v[0] - Math.cos(yaw) * v[1];
+    var idx = Math.round(Math.atan2(my, mx) / (Math.PI / 4));
+    return MAP_BY_ANGLE[((idx % 8) + 8) % 8];
+  }
 
   function sendChar(ch) {
-    if (runNext && DIR_KEYS[ch]) {
+    if (DIR_LETTERS[ch]) ch = viewDir(ch);
+    if (runNext && DIR_LETTERS[ch]) {
       ch = ch.toUpperCase();
       setRun(false);
     }
@@ -284,7 +299,7 @@
     }
     var arrow = { ArrowLeft: 'h', ArrowDown: 'j', ArrowUp: 'k', ArrowRight: 'l', Home: 'y', PageUp: 'u', End: 'b', PageDown: 'n' }[e.key];
     var handled = true;
-    if (arrow) sendKey((e.shiftKey ? arrow.toUpperCase() : arrow).charCodeAt(0));
+    if (arrow) { arrow = viewDir(arrow); sendKey((e.shiftKey ? arrow.toUpperCase() : arrow).charCodeAt(0)); }
     else if (e.key === 'Escape') sendKey(27);
     else if (e.key === 'Enter') sendKey(10);
     else if (e.key === 'Backspace') sendKey(8);
