@@ -146,7 +146,7 @@ window.Backdrop3D = (function () {
     g.strokeStyle = g.fillStyle = p.seal; g.shadowColor = p.seal; g.shadowBlur = 10;
     [[240, 3], [224, 1.5], [168, 2.5], [120, 1.5]].forEach(function (s) { g.lineWidth = s[1]; g.beginPath(); g.arc(0, 0, s[0], 0, 6.3); g.stroke(); });
     g.lineWidth = 1.6;
-    // a crown over two crossed swords
+    // a dragon's head
     function sword(angle) {
       g.save(); g.rotate(angle);
       g.beginPath();
@@ -158,17 +158,38 @@ window.Backdrop3D = (function () {
       g.restore();
     }
     g.lineWidth = 1.8;
-    sword(-0.7); sword(0.7);
-    // the crown: five points with jewels, a jewelled band, and a small cross on top
-    g.lineWidth = 3;
+    // a dragon's head in profile, snarling, with horns, a spined neck and a long fanged jaw
+    g.save();
+    g.scale(1.05, 1.05); g.translate(-20, 2);
+    g.lineJoin = 'round'; g.lineWidth = 3;
+    g.beginPath();                                                      // skull, snout and upper lip
+    g.moveTo(-70, 12); g.bezierCurveTo(-72, -42, -20, -78, 40, -72); g.bezierCurveTo(82, -69, 112, -56, 132, -34);
+    g.bezierCurveTo(122, -26, 104, -24, 88, -22); g.lineTo(22, -4); g.stroke();
+    g.beginPath();                                                      // lower jaw and throat
+    g.moveTo(22, -4); g.bezierCurveTo(42, 20, 92, 30, 126, 22); g.bezierCurveTo(112, 52, 72, 62, 30, 52);
+    g.bezierCurveTo(4, 72, -16, 98, -22, 134); g.stroke();
+    g.beginPath();                                                      // back of the neck
+    g.moveTo(-70, 12); g.bezierCurveTo(-84, 52, -66, 100, -52, 140); g.stroke();
+    g.lineWidth = 2;
+    for (i = 0; i < 7; i++) {                                           // spines down the neck
+      var u = i / 6, sx = -70 - 14 * Math.sin(u * 3.1) + u * 14, sy = 10 + u * 128;
+      g.beginPath(); g.moveTo(sx, sy - 9); g.lineTo(sx - 20 + u * 6, sy + 2); g.lineTo(sx, sy + 9); g.stroke();
+    }
+    g.beginPath();                                                      // two swept-back horns
+    g.moveTo(-14, -68); g.bezierCurveTo(-34, -98, -76, -104, -116, -122); g.bezierCurveTo(-86, -88, -54, -72, -2, -72); g.closePath(); g.stroke();
     g.beginPath();
-    g.moveTo(-72, 38); g.lineTo(-76, -44); g.lineTo(-48, -2); g.lineTo(-37, -58); g.lineTo(-17, -2); g.lineTo(0, -72);
-    g.lineTo(17, -2); g.lineTo(37, -58); g.lineTo(48, -2); g.lineTo(76, -44); g.lineTo(72, 38); g.closePath(); g.stroke();
-    g.lineWidth = 2.4;
-    g.strokeRect(-72, 38, 144, 22);                                                         // the band
-    [[-76, -50], [-37, -64], [0, -78], [37, -64], [76, -50]].forEach(function (t) { g.beginPath(); g.arc(t[0], t[1], 6, 0, 6.3); g.stroke(); });
-    [-48, 0, 48].forEach(function (x) { g.beginPath(); g.arc(x, 49, 5, 0, 6.3); g.fill(); });
-    g.beginPath(); g.moveTo(0, -112); g.lineTo(0, -88); g.moveTo(-9, -102); g.lineTo(9, -102); g.stroke();
+    g.moveTo(20, -72); g.bezierCurveTo(4, -108, -22, -128, -60, -140); g.bezierCurveTo(-38, -108, -12, -90, 40, -70); g.closePath(); g.stroke();
+    for (i = 0; i < 5; i++) {                                           // upper fangs
+      var fx = 92 - i * 15; g.beginPath(); g.moveTo(fx, -22 + i * 3.2); g.lineTo(fx - 4, -6 + i * 4.5); g.lineTo(fx - 9, -20 + i * 3.4); g.stroke();
+    }
+    for (i = 0; i < 4; i++) {                                           // lower fangs
+      var lx = 112 - i * 17; g.beginPath(); g.moveTo(lx, 26 + i * 1.2); g.lineTo(lx - 4, 12 + i * 2.5); g.lineTo(lx - 10, 27 + i * 2.5); g.stroke();
+    }
+    g.beginPath(); g.moveTo(26, -48); g.quadraticCurveTo(46, -62, 70, -46); g.quadraticCurveTo(46, -38, 26, -48); g.closePath(); g.stroke(); // eye
+    g.beginPath(); g.ellipse(48, -48, 3, 6, 0.1, 0, 6.3); g.fill();
+    g.beginPath(); g.arc(112, -38, 3.5, 0, 6.3); g.fill();              // nostril
+    g.beginPath(); g.moveTo(-6, -20); g.bezierCurveTo(10, -30, 20, -26, 28, -18); g.moveTo(-14, -2); g.bezierCurveTo(6, -10, 14, -6, 20, 4); g.stroke(); // scales
+    g.restore();
     g.lineWidth = 1.6;
     var r = rng(3);
     for (i = 0; i < 36; i++) {
