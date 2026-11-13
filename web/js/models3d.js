@@ -25,14 +25,23 @@ window.Models3D = (function () {
 
   // Cel shading: light falls into three flat bands instead of a smooth gradient, and
   // every model gets a dark outline (a slightly enlarged black copy drawn inside out).
+  // Seven texels: the overhead view shows them as three bold bands; first person spreads them into
+  // seven gentle steps so the pool of light around the player has no hard edge.
+  var GRAD_HARD = [88, 88, 168, 168, 255, 255, 255], GRAD_SOFT = [96, 126, 156, 188, 218, 240, 255];
   var gradient = null, hullMat = null;
   function toonGradient() {
     if (!gradient) {
-      gradient = new T.DataTexture(new Uint8Array([88, 168, 255]), 3, 1, T.LuminanceFormat);
+      gradient = new T.DataTexture(new Uint8Array(GRAD_HARD), 7, 1, T.LuminanceFormat);
       gradient.minFilter = gradient.magFilter = T.NearestFilter;
       gradient.needsUpdate = true;
     }
     return gradient;
+  }
+
+  function setSoftBands(soft) {
+    var g = toonGradient();
+    g.image.data.set(soft ? GRAD_SOFT : GRAD_HARD);
+    g.needsUpdate = true;
   }
 
   function toon(params) {
@@ -986,5 +995,5 @@ window.Models3D = (function () {
     return g;
   }
 
-  return { toon: toon, outlineAll: outlineAll, init: init, texture: texture, hero: hero, setTheme: setTheme, monster: monster, item: item, door: door, stairs: stairs, trap: trap };
+  return { setSoftBands: setSoftBands, toon: toon, outlineAll: outlineAll, init: init, texture: texture, hero: hero, setTheme: setTheme, monster: monster, item: item, door: door, stairs: stairs, trap: trap };
 })();

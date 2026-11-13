@@ -186,6 +186,7 @@ window.View3D = (function () {
     scene.fog.color.set(walk ? p.haze : p.bg);
     scene.fog.near = walk ? 0.5 : 16;
     scene.fog.far = walk ? 6.5 : 46;
+    Models3D.setSoftBands(walk);
     heroLight.intensity = walk ? 1.4 : 1.1;
     ambient.intensity = walk ? 0.45 : 0.6;
     sun.intensity = walk ? 0.3 : 0.65;
@@ -584,7 +585,7 @@ window.View3D = (function () {
     var turnBy = wrap(state.heroFace - hero.rotation.y);
     hero.rotation.y += state.reduceMotion ? turnBy : turnBy * Math.min(1, dt * 12);
     if (Math.abs(turnBy) > 0.01) moving = true;
-    heroLight.position.set(state.heroShown.x, 1.8, state.heroShown.y);
+    heroLight.position.set(state.heroShown.x, state.view === 'walk' ? 1.05 : 1.8, state.heroShown.y);
     if (state.view === 'walk') {
       var w = state.walk, wk = state.reduceMotion ? 1 : Math.min(1, dt * 10);
       var diff = wrap(w.target - w.yaw);
