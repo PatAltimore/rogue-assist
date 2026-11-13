@@ -25,8 +25,8 @@ window.Models3D = (function () {
 
   // Cel shading: light falls into three flat bands instead of a smooth gradient, and
   // every model gets a dark outline (a slightly enlarged black copy drawn inside out).
-  // Seven texels: the overhead view shows them as three bold bands; first person spreads them into
-  // seven gentle steps so the pool of light around the player has no hard edge.
+  // Seven texels: GRAD_SOFT gives seven gentle steps, so light fades without a hard edge (used in
+  // both views); GRAD_HARD is the old three bold bands.
   var GRAD_HARD = [88, 88, 168, 168, 255, 255, 255], GRAD_SOFT = [96, 126, 156, 188, 218, 240, 255];
   var gradient = null, hullMat = null;
   function toonGradient() {

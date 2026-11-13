@@ -186,7 +186,7 @@ window.View3D = (function () {
     scene.fog.color.set(walk ? p.haze : p.bg);
     scene.fog.near = walk ? 0.5 : 16;
     scene.fog.far = walk ? 6.5 : 46;
-    Models3D.setSoftBands(walk);
+    Models3D.setSoftBands(true);
     heroLight.intensity = walk ? 1.4 : 1.1;
     ambient.intensity = walk ? 0.45 : 0.6;
     sun.intensity = walk ? 0.3 : 0.65;
