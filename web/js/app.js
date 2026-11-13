@@ -196,7 +196,8 @@
   // brightness, throbbing in size and brightness so it is easy to find.
   function placeHeroMark() {
     var m = $('heroMark'), cells = screenState.cells, at = -1, i;
-    if (cells && is3d() && screenState.mapMode && !needsText()) {
+    // At zero text opacity the text layer is meant to be invisible, so the @ goes too.
+    if (cells && is3d() && screenState.mapMode && !needsText() && parseFloat($('ovOpacity').value) > 0) {
       for (i = COLS; i < (ROWS - 1) * COLS; i++) if ((cells[i] & 0xff) === 64) { at = i; break; }
     }
     if (at < 0) { if (!m.hidden) m.hidden = true; return; }
@@ -989,6 +990,7 @@
     $('gamePane').style.setProperty('--ov', String(v));
     $('gamePane').style.setProperty('--ov-menu', String(Math.max(v, 0.9)));
     if (save) store.set(ovKey(), ov.value);
+    if (screenState.cells) placeHeroMark();
   }
 
   function setMode(m) {
