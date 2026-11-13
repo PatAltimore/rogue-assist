@@ -211,18 +211,18 @@ window.Models3D = (function () {
     var S = 128, c = document.createElement('canvas');
     c.width = c.height = S;
     var g = c.getContext('2d'), r = rng(kind.length * 97 + kind.charCodeAt(0)), i, x, y;
-    if (kind === 'stone') { // brick courses
-      g.fillStyle = grey(95); g.fillRect(0, 0, S, S);
+    if (kind === 'stone') { // cel-shaded bricks: flat tones, hard-edged highlight and shadow, thin ink joints
+      var tones = [188, 150, 214];
+      g.fillStyle = grey(52); g.fillRect(0, 0, S, S);                       // ink-dark mortar
       for (y = 0; y < 4; y++) {
         for (x = -(y % 2) * 32; x < S; x += 64) {
-          var v = 175 + r() * 60;
-          g.fillStyle = grey(v); g.fillRect(x + 2, y * 32 + 2, 60, 28);
-          g.fillStyle = grey(v + 28); g.fillRect(x + 2, y * 32 + 2, 60, 2);
-          g.fillStyle = grey(v - 34); g.fillRect(x + 2, y * 32 + 28, 60, 2);
-          for (i = 0; i < 5; i++) { g.fillStyle = grey(v - 20 + r() * 40); g.fillRect(x + 4 + r() * 52, y * 32 + 5 + r() * 20, 2 + r() * 6, 2 + r() * 4); }
+          var v = tones[(r() * 3) | 0];
+          g.fillStyle = grey(v); g.fillRect(x + 2, y * 32 + 2, 60, 28);        // the brick, one flat tone
+          g.fillStyle = grey(Math.min(255, v + 38)); g.fillRect(x + 2, y * 32 + 2, 60, 7);   // lit top band
+          g.fillStyle = grey(v - 46); g.fillRect(x + 2, y * 32 + 25, 60, 5);  // shadowed bottom band
+          if (r() < 0.25) { g.fillStyle = grey(52); g.fillRect(x + 12 + r() * 30, y * 32 + 12, 2, 8); } // a chip
         }
       }
-      grain(g, S, 30, r);
     } else if (kind === 'flag') { // flagstones with cracks
       g.fillStyle = grey(90); g.fillRect(0, 0, S, S);
       var cuts = [[0, 0, 70, 58], [70, 0, 58, 70], [0, 58, 52, 70], [52, 70, 76, 58], [52, 58, 18, 12]];

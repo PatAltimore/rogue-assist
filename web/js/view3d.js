@@ -205,19 +205,6 @@ window.View3D = (function () {
     mesh.setMatrixAt(i, tmpM.m);
     tmpM.c.set(color);
     mesh.setColorAt(i, tmpM.c);
-    if (edgeOut && (mesh === walls || mesh === rocks)) boxEdges(edgeOut, x, y, z, sx, sy, sz);
-  }
-
-  // First-person cel shading: the walls get dark edge lines, collected here as the map is built.
-  var edgeOut = null, edgeMesh = null;
-  function boxEdges(out, x, y, z, sx, sy, sz) {
-    var hx = sx / 2, hy = sy / 2, hz = sz / 2, i, j, k;
-    var X = [x - hx, x + hx], Y = [y - hy, y + hy], Z = [z - hz, z + hz];
-    for (i = 0; i < 2; i++) for (j = 0; j < 2; j++) {
-      out.push(X[0], Y[i], Z[j], X[1], Y[i], Z[j]);      // along x
-      out.push(X[i], Y[0], Z[j], X[i], Y[1], Z[j]);      // along y
-      out.push(X[i], Y[j], Z[0], X[i], Y[j], Z[1]);      // along z
-    }
   }
 
   // A colour part of the way towards the haze colour.
@@ -461,7 +448,6 @@ window.View3D = (function () {
     var nW = 0, nF = 0, nP = 0, nR = 0;
     var walk = state.view === 'walk';
     cellWall.length = cellFloor.length = cellPass.length = 0;
-    edgeOut = walk ? [] : null;
     clearDynamic();
 
     for (var y = 1; y < ROWS - 1; y++) {
@@ -559,18 +545,6 @@ window.View3D = (function () {
     }
     data.monsters.forEach(function (m) { addMonster(m.ch, m.x, m.y, p, m.radar, data.hero); });
 
-    if (walk) {
-      if (!edgeMesh) {
-        edgeMesh = new T.LineSegments(new T.BufferGeometry(), new T.LineBasicMaterial({ color: 0x05060c }));
-        edgeMesh.frustumCulled = false;
-        scene.add(edgeMesh);
-      }
-      edgeMesh.geometry.dispose();
-      edgeMesh.geometry = new T.BufferGeometry();
-      edgeMesh.geometry.setAttribute('position', new T.BufferAttribute(new Float32Array(edgeOut), 3));
-    }
-    if (edgeMesh) edgeMesh.visible = walk;
-    edgeOut = null;
     rocks.count = nR;
     rocks.instanceMatrix.needsUpdate = true;
     if (rocks.instanceColor) rocks.instanceColor.needsUpdate = true;
