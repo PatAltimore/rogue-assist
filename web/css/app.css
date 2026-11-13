@@ -270,12 +270,12 @@ code { font-family: var(--font-mono); background: var(--panel-2); padding: 0 4px
 .mode-3d .ov-label:not([hidden]) { display: inline-flex; }
 .mode-3d .screen { margin: auto; }
 .mode-3d .view3d-stage { height: clamp(380px, 64vh, 720px); }
-.mode-3d .view3d-help, .mode-3d #btnView3d, .mode-3d .status-note { display: none; }
-.mode-3d .view3d.collapsed .view3d-stage { display: block; }
-.mode-3d .view3d.collapsed [data-v3] { display: inline-block; }
-.mode-3d .view3d-head h2 { display: none; }
 .mode-3d .view3d-head { justify-content: flex-end; }
 
+.mode-3d .status-note { display: none; }
+/* The 3D view only appears in the 3D and First-person modes. */
+.view3d { display: none; }
+.mode-3d .view3d { display: block; }
 .view3d { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px 10px; }
 .view3d-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
 .view3d-head h2 { margin: 0; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); }
@@ -285,12 +285,9 @@ code { font-family: var(--font-mono); background: var(--panel-2); padding: 0 4px
 .view3d-stage canvas { display: block; width: 100%; height: 100%; touch-action: pan-y; cursor: grab; }
 .view3d-stage canvas:active { cursor: grabbing; }
 .view3d-msg { position: absolute; inset: 0; display: grid; place-items: center; margin: 0; padding: 16px; text-align: center; color: var(--muted); }
-.view3d-help { margin: 6px 0 0; font-size: 0.8rem; }
-.view3d.collapsed .view3d-stage, .view3d.collapsed .view3d-help, .view3d.collapsed [data-v3] { display: none; }
 
 @media (max-width: 860px) {
   .view3d-stage { height: 200px; }
-  .view3d-help { display: none; }
   .mode-3d .view3d-stage { height: min(56vh, 460px); }
   .layout { grid-template-columns: minmax(0, 1fr); padding: 8px 16px 16px; }
   .assist { max-height: none; }
@@ -323,7 +320,6 @@ code { font-family: var(--font-mono); background: var(--panel-2); padding: 0 4px
 /* display: grid above would otherwise override the hidden attribute and leave an invisible layer over the canvas */
 .view3d-msg[hidden] { display: none; }
 
-.view3d.collapsed #btnMotion { display: none; }
 
 .cheat-grid kbd { float: right; font: 0.72rem var(--font-mono); color: var(--muted); border: 1px solid var(--border); border-radius: 4px; padding: 0 4px; }
 

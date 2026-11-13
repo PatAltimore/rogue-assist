@@ -902,9 +902,6 @@
 
   var lastState = null;
 
-  // The 3D panel under the text screen. It only does work while it is open.
-  var view3dOpen = store.get('rogue-3d', '1') === '1';
-
   var terr = {}, terrLevel = -1;
   var seenKills = 0;
   function checkKills() {
@@ -961,17 +958,8 @@
   }
 
   function is3d() { return mode === '3d' || mode === 'walk'; }
-  function view3dActive() { return is3d() || view3dOpen; }
-
-  function setView3dOpen(open) {
-    view3dOpen = open;
-    store.set('rogue-3d', open ? '1' : '0');
-    $('view3d').classList.toggle('collapsed', !open);
-    $('btnView3d').textContent = open ? 'Hide' : 'Show 3D';
-    $('btnView3d').setAttribute('aria-expanded', open);
-    if (window.View3D) View3D.setVisible(view3dActive());
-    if (view3dActive() && lastState) update3d(lastState);
-  }
+  // The 3D view only exists in the 3D and First-person modes; the Text mode has no panel.
+  function view3dActive() { return is3d(); }
 
   // ---- main view: text (default) or 3D with the text screen as a pop-up ----
 
@@ -1082,8 +1070,6 @@
     if (!ok) {
       $('modeText').parentNode.hidden = true;
       Array.prototype.forEach.call(document.querySelectorAll('[data-v3]'), function (b) { b.hidden = true; });
-      $('view3dHelp').hidden = true;
-      $('btnView3d').hidden = true;
       document.querySelector('.viewmode').hidden = true;
       return;
     }
@@ -1091,8 +1077,6 @@
       var b = e.target.closest('button[data-v3]');
       if (b) View3D.command(b.dataset.v3);
     });
-    $('btnView3d').addEventListener('click', function () { setView3dOpen(!view3dOpen); });
-    setView3dOpen(view3dOpen);
     $('modeText').addEventListener('click', function () { setMode('2d'); });
     $('mode3d').addEventListener('click', function () { setMode('3d'); });
     $('modeWalk').addEventListener('click', function () { setMode('walk'); });
