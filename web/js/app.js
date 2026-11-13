@@ -358,6 +358,9 @@
     if (!lastState || !lastGrid) return dir;
     var hx = lastState.heroX, hy = lastState.heroY, d = DIR_DELTA[dir];
     if (canStep(hx, hy, d[0], d[1])) return dir;
+    // A monster ahead is not a wall: moving into it attacks, so let that through.
+    var ahead = gridChar(hx + d[0], hy + d[1]);
+    if (ahead >= 'A' && ahead <= 'Z' && diagonalOk(hx, hy, d[0], d[1])) return dir;
     var opts = [];
     for (var i = 0; i < 8; i++) {
       var dd = DIR_DELTA[i];
